@@ -184,18 +184,7 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Quick Credential Hints */}
-          <div className="p-4 rounded-xl bg-[#F0F7FF] border border-[#005ea4]/20 text-xs space-y-2 text-[#666666]">
-            <p className="font-bold text-[#005ea4]">Quick Test Credentials:</p>
-            <div className="flex items-center justify-between text-[11px]">
-              <span>Admin: <code className="text-[#005ea4] font-bold">admin@seekoji.com</code></span>
-              <span>Pass: <code className="text-[#0B0B0B] font-mono">secret</code></span>
-            </div>
-            <div className="flex items-center justify-between text-[11px]">
-              <span>Coordinator: <code className="text-[#005ea4] font-bold">coordinator@seekoji.com</code></span>
-              <span>Pass: <code className="text-[#0B0B0B] font-mono">secret</code></span>
-            </div>
-          </div>
+
 
         </motion.div>
       </div>
