@@ -1,0 +1,164 @@
+@import 'tailwindcss';
+
+:root {
+  --surface: #FFFFFF;
+  --surface-bright: #f9f9f7;
+  --surface-container-low: #f4f4f2;
+  --surface-container: #eeeeec;
+  --background: #f9f9f7;
+  --on-surface: #1a1c1b;
+  --outline: #717783;
+  --outline-variant: #c0c7d3;
+  --primary: #005ea4;
+  --primary-container: #1777c9;
+  --secondary: #006876;
+  --tertiary: #006947;
+  --success: #1BAF7A;
+  --warning: #FFA500;
+  --danger: #D03B3B;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  --border-hairline: #E5E5E5;
+  --text-primary: #0B0B0B;
+  --text-secondary: #666666;
+  --active-highlight: #F0F7FF;
+  --xs: 4px;
+  --sm: 8px;
+  --md: 12px;
+  --lg: 16px;
+  --xl: 24px;
+  --xxl: 32px;
+  --r: .5rem;
+  --r-md: .75rem;
+  --r-xl: 1.5rem;
+  --sidebar: 250px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
+  background: var(--background);
+  color: var(--on-surface);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+button, input, select, textarea, h1, h2, h3, h4, h5, h6 {
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.mono, .sk-tok {
+  font-family: 'Courier Prime', monospace !important;
+}
+
+/* Custom scrollbar helpers */
+.hide-sb::-webkit-scrollbar { display: none; }
+.hide-sb { -ms-overflow-style: none; scrollbar-width: none; }
+.thin-sb { scrollbar-width: thin; scrollbar-color: var(--outline-variant) transparent; }
+.thin-sb::-webkit-scrollbar { height: 6px; width: 6px; }
+.thin-sb::-webkit-scrollbar-track { background: transparent; }
+.thin-sb::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 9999px; }
+.thin-sb::-webkit-scrollbar-thumb:hover { background: var(--outline); }
+
+/* Card & Tile Utilities */
+.sk-card {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border-hairline);
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.sk-tile {
+  border-radius: var(--r-md);
+  padding: var(--lg);
+  display: flex;
+  align-items: center;
+  gap: var(--md);
+}
+
+.sk-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  padding: var(--lg);
+  cursor: pointer;
+  transition: all .15s;
+}
+.sk-kpi:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+
+.sk-stat {
+  background: var(--surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  padding: var(--lg);
+  display: flex;
+  align-items: center;
+  gap: var(--md);
+}
+
+/* Pipeline Stage Buttons */
+.sk-stage {
+  display: flex;
+  flex-direction: column;
+  width: 176px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border-hairline);
+  transition: all 0.15s ease;
+}
+.sk-stage:hover { background: var(--surface-container-low); }
+.sk-stage.on {
+  background: var(--active-highlight);
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 94, 164, 0.1);
+}
+
+/* Table Utilities */
+.sk-pill {
+  display: inline-block;
+  padding: 3px var(--md);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.sk-btn {
+  padding: 8px var(--lg);
+  border-radius: var(--r);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sm);
+  transition: all .15s;
+  white-space: nowrap;
+}
+.sk-btn-primary { background: var(--primary); color: #fff; }
+.sk-btn-primary:hover { background: var(--primary-container); }
+.sk-btn-outline { background: var(--surface); border-color: var(--border-hairline); color: var(--text-secondary); }
+.sk-btn-outline:hover { border-color: var(--primary); color: var(--primary); }
