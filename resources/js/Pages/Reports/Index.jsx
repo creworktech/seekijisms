@@ -63,15 +63,15 @@ export default function Reports({ jobs, technicians = [], filters, sanctumToken 
   const pagination = jobs?.meta || {};
 
   return (
-    <AppLayout title="Reports & Export Analytics">
+    <AppLayout title="Reports & Analytics" description="Detailed analytics reports, exportable CSV/Excel service logs, repair outcome statistics, and technician performance metrics.">
       <div className="p-4 space-y-4 w-full max-w-full">
         
         {/* HEADER */}
         <div className="flex justify-between items-start flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#0B0B0B]">Reports & Queued Exports</h1>
+            <h1 className="text-2xl font-bold text-[#0B0B0B]">Reports & Analytics</h1>
             <p className="text-[#666666] text-xs mt-0.5">
-              Comprehensive job list strictly ordered by <span className="sk-tok">id ASC</span> (insertion sequence).
+              Generate comprehensive service reports, export CSV/PDF data, and analyze repair performance.
             </p>
           </div>
 

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Link, usePage, router } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { hasPermission } from '../utils/formatters';
 import seekojiLogo from '../../../public/images/logo.png';
 
-export default function AppLayout({ children, title = 'Dashboard' }) {
+export default function AppLayout({ children, title = 'Dashboard', description = 'Seekoji Electric Service Management Portal' }) {
   const { auth, flash } = usePage().props;
   const user = auth?.user;
 
@@ -70,6 +70,10 @@ export default function AppLayout({ children, title = 'Dashboard' }) {
 
   return (
     <div className="min-h-screen flex bg-[#f9f9f7] text-[#1a1c1b] font-sans antialiased max-w-full overflow-x-hidden">
+      <Head>
+        <title>{`${title} | Seekoji Service Management`}</title>
+        <meta name="description" content={description} />
+      </Head>
 
       {/* Toast Alert System */}
       <AnimatePresence>

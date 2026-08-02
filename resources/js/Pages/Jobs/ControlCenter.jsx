@@ -224,7 +224,7 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
   const currentStageJobs = jobs.filter((j) => !activeStageKey || j.stage === activeStageKey);
 
   return (
-    <AppLayout title="Job Control Center">
+    <AppLayout title="Job Control Center" description="Interactive workflow stage manager to assign technicians, approve repair budgets, and update job progress.">
       <div className="flex flex-col h-[calc(100vh-57px)] w-full overflow-hidden bg-[#f9f9f7]">
 
         {/* TOP PIPELINE STATUS CONTROL - ALL STAGES FIT ON ONE SCREEN */}

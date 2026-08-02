@@ -37,15 +37,15 @@ export default function SettingsPage({ settings, sanctumToken }) {
   };
 
   return (
-    <AppLayout title="System Settings">
+    <AppLayout title="System Settings" description="Configure business profile details, token prefixes, inspection fees, WhatsApp notification mode, and system parameters.">
       <div className="p-4 space-y-4 w-full max-w-full">
         
         {/* HEADER */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#0B0B0B]">System Settings & Rules</h1>
+            <h1 className="text-2xl font-bold text-[#0B0B0B]">System Settings</h1>
             <p className="text-[#666666] text-xs mt-0.5">
-              Configure default inspection fees, token prefixes, business identity & defaults.
+              Configure business identity details, default inspection fees, token prefixes, and system options.
             </p>
           </div>
         </div>

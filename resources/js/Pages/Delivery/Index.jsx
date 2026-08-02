@@ -88,15 +88,15 @@ export default function Delivery({ jobs, filters, sanctumToken }) {
   const pagination = jobs?.meta || {};
 
   return (
-    <AppLayout title="Delivery">
+    <AppLayout title="Delivery Management" description="Manage completed solar controller deliveries, payment settlements, receiver signatures, and dispatch tracking.">
       <div className="p-4 space-y-4 w-full max-w-full">
 
         {/* HEADER */}
         <div className="flex justify-between items-start flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#0B0B0B]">Delivery</h1>
+            <h1 className="text-2xl font-bold text-[#0B0B0B]">Delivery Management</h1>
             <p className="text-[#666666] text-xs mt-0.5">
-              Record item handover and dispatch details to customers.
+              Record equipment handovers, manage dispatch tracking, and process customer receipts.
             </p>
           </div>
         </div>

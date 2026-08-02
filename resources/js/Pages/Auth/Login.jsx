@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { Wrench, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import seekojiLogoOnly from '../../../../public/images/seekoji-logo-only.png';
@@ -19,6 +19,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-[#f9f9f7] text-[#0B0B0B] font-sans antialiased">
+      <Head>
+        <title>Sign In | Seekoji Service Management</title>
+        <meta name="description" content="Sign in to Seekoji Electric Service Management Portal to manage solar controller repairs, customer jobs, and service workflows." />
+      </Head>
 
       {/* Left Column: Brand Hero Banner (Minimal Light) */}
       <div className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden bg-[#F0F7FF] border-r border-[#E5E5E5]">

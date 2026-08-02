@@ -99,7 +99,7 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
   };
 
   return (
-    <AppLayout title="User & Staff Management">
+    <AppLayout title="User Management" description="Manage admin, coordinator, tester, and technician accounts, role assignments, access permissions, and activity statuses.">
       <div className="p-4 space-y-4 w-full max-w-full">
         
         {/* HEADER */}
@@ -107,7 +107,7 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
           <div>
             <h1 className="text-2xl font-bold text-[#0B0B0B]">User & Role Management</h1>
             <p className="text-[#666666] text-xs mt-0.5">
-              Manage system access roles (<span className="text-[#FFA500] font-semibold">Admin</span>, <span className="text-[#005ea4] font-semibold">Coordinator</span>, <span className="text-purple-600 font-semibold">Tester</span>, <span className="text-[#1BAF7A] font-semibold">Technician</span>).
+              Manage system staff accounts, user permissions, and assigned operational roles (<span className="text-[#005ea4] font-semibold">Admin</span>, <span className="text-purple-600 font-semibold">Tester</span>, <span className="text-[#1BAF7A] font-semibold">Technician</span>).
             </p>
           </div>
 

@@ -61,7 +61,7 @@ export default function Dashboard({ stats, dashboardCustomers = [], recentJobs =
   ];
 
   return (
-    <AppLayout title="Dashboard">
+    <AppLayout title="Dashboard" description="Real-time overview of solar controller repair jobs, stage metrics, and revenue.">
       <div className="p-4 space-y-6 w-full max-w-full">
 
         {/* PAGE HEAD */}

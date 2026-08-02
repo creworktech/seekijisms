@@ -37,15 +37,15 @@ export default function Customers({ customers, filters, sanctumToken }) {
   const pagination = customers?.meta || {};
 
   return (
-    <AppLayout title="Customer Directory">
+    <AppLayout title="Customer Management" description="Directory of B2B and retail customers, customer codes, contact details, active repair history, and ledger accounts.">
       <div className="p-4 space-y-4 w-full max-w-full">
 
         {/* HEADER */}
         <div className="flex justify-between items-start flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#0B0B0B]">Customer Directory</h1>
+            <h1 className="text-2xl font-bold text-[#0B0B0B]">Customer Management</h1>
             <p className="text-[#666666] text-xs mt-0.5">
-              Manage client records, contact details, and service job history.
+              Manage client records, contact numbers, customer codes, and service job history.
             </p>
           </div>
 

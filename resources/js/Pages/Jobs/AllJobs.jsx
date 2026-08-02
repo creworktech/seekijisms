@@ -40,14 +40,14 @@ export default function AllJobs({ jobs, totalJobsCount, outcomeGroupCounts, test
   const total = totalJobsCount || pagination.total || jobList.length;
 
   return (
-    <AppLayout title="All Jobs">
+    <AppLayout title="All Jobs" description="Search, filter, and track all solar controller service jobs across stages and repair outcomes.">
       <div className="p-4 space-y-4 w-full max-w-full">
 
         {/* PAGE HEADER */}
         <div className="flex justify-between items-start flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#0B0B0B]">All Jobs</h1>
-            <p className="text-[#666666] text-xs mt-0.5">{total} total jobs in system</p>
+            <h1 className="text-2xl font-bold text-[#0B0B0B]">All Jobs Repository</h1>
+            <p className="text-[#666666] text-xs mt-0.5">Search, filter, and manage all {total} service intake records across stages and repair categories.</p>
           </div>
 
           <div className="flex items-center gap-3">

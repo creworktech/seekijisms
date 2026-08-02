@@ -105,7 +105,7 @@ export default function AccountsIndex({
   };
 
   return (
-    <AppLayout title="Accounts & Payments">
+    <AppLayout title="Accounts & Financial Ledger" description="Financial overview tracking total repair revenue, dues collection, customer ledgers, and transaction history.">
       <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
         
         {/* GLOBAL TOP HEADER & CUSTOMER FILTER (ABOVE CARDS) */}
