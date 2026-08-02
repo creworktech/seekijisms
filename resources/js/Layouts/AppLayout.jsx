@@ -8,6 +8,7 @@ export default function AppLayout({ children, title = 'Dashboard', description =
   const { auth, flash } = usePage().props;
   const user = auth?.user;
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(
     flash?.success
@@ -99,18 +100,36 @@ export default function AppLayout({ children, title = 'Dashboard', description =
         )}
       </AnimatePresence>
 
-      {/* SIDEBAR */}
-      <aside className="fixed left-0 top-0 h-screen w-[250px] bg-white border-r border-[#E5E5E5] flex flex-col py-4 z-50">
+      {/* MOBILE BACKDROP OVERLAY */}
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+        />
+      )}
 
-        {/* BRAND */}
-        <div className="px-6 mb-6 flex flex-col items-start gap-1.5">
-          <div className="flex items-center gap-2.5">
-            <img src={seekojiLogo} alt="Seekoji Logo" className="h-9 w-auto object-contain shrink-0" />
-            {/* <h1 className="text-lg font-bold text-[#005ea4] leading-tight">Seekoji</h1> */}
+      {/* SIDEBAR (DESKTOP FIXED + MOBILE SLIDE-OUT DRAWER) */}
+      <aside
+        className={`fixed left-0 top-0 h-screen w-[250px] bg-white border-r border-[#E5E5E5] flex flex-col py-4 z-50 transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+          mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        }`}
+      >
+        {/* BRAND & MOBILE CLOSE BUTTON */}
+        <div className="px-6 mb-6 flex items-center justify-between">
+          <div className="flex flex-col items-start gap-1.5">
+            <div className="flex items-center gap-2.5">
+              <img src={seekojiLogo} alt="Seekoji Logo" className="h-9 w-auto object-contain shrink-0" />
+            </div>
+            <p className="text-[11px] text-[#666666] uppercase font-bold tracking-wider">
+              Service Management
+            </p>
           </div>
-          <p className="text-[11px] text-[#666666] uppercase font-bold tracking-wider">
-            Service Management
-          </p>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden text-slate-500 hover:text-slate-900 p-1"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
         </div>
 
         {/* NAV LINKS */}
@@ -123,6 +142,7 @@ export default function AppLayout({ children, title = 'Dashboard', description =
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center px-3 py-2 rounded-lg text-xs transition-colors ${isActive
                     ? 'bg-[#F0F7FF] text-[#005ea4] font-semibold border-l-4 border-[#005ea4] pl-2'
                     : 'text-[#666666] hover:bg-[#f4f4f2] hover:text-[#0b0b0b]'
@@ -147,42 +167,52 @@ export default function AppLayout({ children, title = 'Dashboard', description =
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="ml-[250px] flex-1 w-[calc(100vw-250px)] max-w-[calc(100vw-250px)] min-h-screen flex flex-col overflow-x-hidden">
+      {/* MAIN CONTENT AREA (RESPONSIVE MARGIN ON MOBILE vs DESKTOP) */}
+      <div className="lg:ml-[250px] flex-1 lg:w-[calc(100vw-250px)] lg:max-w-[calc(100vw-250px)] w-full max-w-full min-h-screen flex flex-col overflow-x-hidden">
 
         {/* TOPBAR */}
-        <header className="bg-white border-b border-[#E5E5E5] flex justify-between items-center px-4 py-2.5 shrink-0 gap-4 sticky top-0 z-40">
-          <h2 className="text-xl font-semibold text-[#0B0B0B]">
-            {title}
-          </h2>
+        <header className="bg-white border-b border-[#E5E5E5] flex justify-between items-center px-3 sm:px-4 py-2.5 shrink-0 gap-2 sm:gap-4 sticky top-0 z-40">
+          <div className="flex items-center gap-2">
+            {/* HAMBURGER TOGGLE BUTTON FOR MOBILE */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-1.5 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Toggle Navigation Menu"
+            >
+              <span className="material-symbols-outlined text-2xl">menu</span>
+            </button>
+            <h2 className="text-base sm:text-xl font-semibold text-[#0B0B0B] truncate">
+              {title}
+            </h2>
+          </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
 
             {/* Global Search */}
             <form onSubmit={handleGlobalSearch} className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#717783] text-lg pointer-events-none">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#717783] text-base sm:text-lg pointer-events-none">
                 search
               </span>
               <input
                 type="text"
-                placeholder="Search Token No, Customer or Job ID..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-3 py-1.5 bg-[#f4f4f2] border border-[#E5E5E5] rounded-lg w-72 text-xs outline-none focus:border-[#005ea4] focus:ring-1 focus:ring-[#005ea4] transition-all"
+                className="pl-9 sm:pl-10 pr-2 sm:pr-3 py-1.5 bg-[#f4f4f2] border border-[#E5E5E5] rounded-lg w-32 sm:w-72 text-xs outline-none focus:border-[#005ea4] focus:ring-1 focus:ring-[#005ea4] transition-all"
               />
             </form>
 
             {/* Notification Bell */}
-            <button className="text-[#666666] hover:text-[#005ea4] transition-colors p-1" title="Notifications">
+            <button className="text-[#666666] hover:text-[#005ea4] transition-colors p-1 hidden sm:block" title="Notifications">
               <span className="material-symbols-outlined text-xl">notifications</span>
             </button>
 
             {/* User Profile */}
-            <div className="flex items-center gap-2.5 pl-4 border-l border-[#E5E5E5]">
-              <div className="w-8 h-8 rounded-full bg-[#005ea4] text-white flex items-center justify-center font-bold text-xs shrink-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 pl-2 sm:pl-4 border-l border-[#E5E5E5]">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#005ea4] text-white flex items-center justify-center font-bold text-xs shrink-0">
                 {userInitials}
               </div>
-              <div className="leading-tight">
+              <div className="leading-tight hidden sm:block">
                 <b className="block text-xs text-[#0B0B0B]">{user?.name || 'Staff User'}</b>
                 <small className="text-[10px] text-[#666666] capitalize">
                   {user?.roles?.[0] ? user.roles[0].replace('_', ' ') : 'User'}

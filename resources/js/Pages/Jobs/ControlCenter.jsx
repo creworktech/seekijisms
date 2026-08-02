@@ -227,9 +227,9 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
     <AppLayout title="Job Control Center" description="Interactive workflow stage manager to assign technicians, approve repair budgets, and update job progress.">
       <div className="flex flex-col h-[calc(100vh-57px)] w-full overflow-hidden bg-[#f9f9f7]">
 
-        {/* TOP PIPELINE STATUS CONTROL - ALL STAGES FIT ON ONE SCREEN */}
-        <div className="pipeline border-b border-[#E5E5E5] bg-[#f9f9f7] pt-3 pb-4 px-4 shrink-0 w-full overflow-hidden">
-          <div className="pipe-inner flex items-center justify-between gap-1.5 w-full min-w-0">
+        {/* TOP PIPELINE STATUS CONTROL - SCROLLABLE ON MOBILE */}
+        <div className="pipeline border-b border-[#E5E5E5] bg-[#f9f9f7] pt-3 pb-4 px-4 shrink-0 w-full overflow-x-auto thin-sb">
+          <div className="pipe-inner flex items-center justify-between gap-1.5 min-w-[700px] lg:min-w-0">
             {Object.keys(STAGES).map((key, idx) => {
               const st = STAGES[key];
               const isSelected = activeStageKey === key;

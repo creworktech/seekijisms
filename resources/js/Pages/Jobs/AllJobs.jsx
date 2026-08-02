@@ -253,8 +253,8 @@ export default function AllJobs({ jobs, totalJobsCount, outcomeGroupCounts, test
             </div>
           </div>
 
-          {/* TABLE (NO HORIZONTAL SCROLLBAR) */}
-          <div className="w-full overflow-hidden">
+          {/* TABLE (HORIZONTAL SCROLLABLE) */}
+          <div className="w-full overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead className="bg-[#f4f4f2] text-[#666666] uppercase text-[10px] font-bold tracking-wider border-b border-[#E5E5E5]">
                 <tr>
