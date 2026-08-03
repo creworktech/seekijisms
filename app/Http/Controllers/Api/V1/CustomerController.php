@@ -131,4 +131,20 @@ class CustomerController extends Controller
             'existing_customer' => null,
         ], 200);
     }
+
+    public function destroy(Request $request, Customer $customer): JsonResponse
+    {
+        if (! $request->user()?->hasRole('admin')) {
+            return response()->json([
+                'message' => 'Unauthorized. Only admins can delete customer records.',
+            ], 403);
+        }
+
+        $custName = $customer->name;
+        $customer->forceDelete();
+
+        return response()->json([
+            'message' => "Customer '{$custName}' deleted successfully.",
+        ], 200);
+    }
 }

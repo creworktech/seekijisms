@@ -5,9 +5,11 @@ import CreateCustomerModal from '../../Components/Customers/CreateCustomerModal'
 import EditCustomerModal from '../../Components/Customers/EditCustomerModal';
 import ShowCustomerDrawer from '../../Components/Customers/ShowCustomerDrawer';
 import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
+import ConfirmActionModal from '../../Components/Common/ConfirmActionModal';
 import axios from 'axios';
 import { formatDate } from '../../utils/formatters';
 import { exportCustomersToCSV, exportCustomersToPDF } from '../../utils/exportHelper';
+import { notifySuccess, notifyError } from '../../utils/toast';
 
 export default function Customers({ customers, filters, sanctumToken }) {
   const { auth } = usePage().props;
@@ -18,7 +20,25 @@ export default function Customers({ customers, filters, sanctumToken }) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
+  const [deleteModalData, setDeleteModalData] = useState(null);
+  const [deletingCustomer, setDeletingCustomer] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleConfirmDeleteCustomer = async () => {
+    if (!deleteModalData) return;
+    setDeletingCustomer(true);
+    try {
+      const headers = sanctumToken ? { Authorization: `Bearer ${sanctumToken}` } : {};
+      const res = await axios.delete(`/api/v1/customers/${deleteModalData.id}`, { headers });
+      setDeletingCustomer(false);
+      setDeleteModalData(null);
+      notifySuccess(res.data?.message || 'Customer deleted successfully');
+      router.reload();
+    } catch (err) {
+      setDeletingCustomer(false);
+      notifyError(err.response?.data?.message || 'Failed to delete customer.');
+    }
+  };
 
   React.useEffect(() => {
     const unbindStart = router.on('start', () => setIsNavigating(true));
@@ -213,6 +233,17 @@ export default function Customers({ customers, filters, sanctumToken }) {
                               </button>
                             )}
 
+                            {/* Delete Customer button for Admin */}
+                            {isAdmin && (
+                              <button
+                                onClick={() => setDeleteModalData(cust)}
+                                className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors cursor-pointer"
+                                title="Delete Customer Record"
+                              >
+                                <span className="material-symbols-outlined text-xl">delete</span>
+                              </button>
+                            )}
+
                             {/* Active/Inactive status toggle button for Admin only */}
                             {isAdmin && (
                               <button
@@ -298,6 +329,21 @@ export default function Customers({ customers, filters, sanctumToken }) {
             setEditingCustomer(cust);
           }}
         />
+
+        {/* DELETE CUSTOMER CONFIRMATION MODAL */}
+        {deleteModalData && (
+          <ConfirmActionModal
+            isOpen={Boolean(deleteModalData)}
+            title="Delete Customer Record"
+            description={`Are you sure you want to permanently delete customer record for ${deleteModalData.name} (${deleteModalData.customer_code})? This action cannot be undone.`}
+            tokenNo={deleteModalData.customer_code}
+            customerName={deleteModalData.name}
+            customerMobile={deleteModalData.mobile}
+            submitting={deletingCustomer}
+            onClose={() => setDeleteModalData(null)}
+            onConfirm={handleConfirmDeleteCustomer}
+          />
+        )}
 
       </div>
     </AppLayout>

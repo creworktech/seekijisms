@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/accounts', [WebController::class, 'accounts'])->name('accounts.index');
         Route::get('/jcc', [WebController::class, 'jcc'])->name('jobs.jcc');
         Route::delete('/jobs/{job}', [WebController::class, 'destroyJob'])->name('jobs.destroy');
+        Route::delete('/customers/{customer}', [WebController::class, 'destroyCustomer'])->name('customers.destroy');
         Route::post('/jobs/{job}/toggle-payment', [WebController::class, 'togglePayment'])->name('jobs.toggle-payment');
         Route::get('/users', [WebController::class, 'users'])->name('users.index');
         Route::get('/settings', [WebController::class, 'settings'])->name('settings.index');

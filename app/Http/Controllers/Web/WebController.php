@@ -257,9 +257,11 @@ class WebController extends Controller
             $query->where('customer_id', $customerId);
         }
 
-        if ($stage = $request->input('stage')) {
-            $query->where('stage', $stage);
+        $stage = $request->input('stage');
+        if (! $stage) {
+            $stage = 'new';
         }
+        $query->where('stage', $stage);
 
         $jobs = $query->orderBy('id', 'desc')->get();
 
@@ -308,7 +310,7 @@ class WebController extends Controller
             'testers' => $testers,
             'technicians' => $technicians,
             'tokenPreview' => $previewToken,
-            'filters' => $request->only(['search', 'stage', 'customer_id']),
+            'filters' => array_merge($request->only(['search', 'customer_id']), ['stage' => $stage]),
             'sanctumToken' => session('sanctum_token'),
         ]);
     }
@@ -747,5 +749,14 @@ class WebController extends Controller
         }
 
         return app(\App\Http\Controllers\Api\V1\JobController::class)->destroy($request, $job);
+    }
+
+    public function destroyCustomer(Request $request, Customer $customer): \Illuminate\Http\JsonResponse
+    {
+        if (! $request->user()?->hasRole('admin')) {
+            abort(403, 'Unauthorized. Only admins can delete customer records.');
+        }
+
+        return app(\App\Http\Controllers\Api\V1\CustomerController::class)->destroy($request, $customer);
     }
 }

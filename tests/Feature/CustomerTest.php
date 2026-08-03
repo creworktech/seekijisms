@@ -146,4 +146,30 @@ class CustomerTest extends TestCase
         $successRes->assertStatus(200);
         $this->assertTrue($customer->fresh()->is_active);
     }
+
+    /** @test */
+    public function only_admin_can_delete_customer(): void
+    {
+        $customer = Customer::create([
+            'customer_code' => 'C00099',
+            'name' => 'Delete Test Customer',
+            'mobile' => '9876543999',
+            'address' => 'Test Address',
+            'is_active' => true,
+            'registered_on' => now()->format('Y-m-d'),
+        ]);
+
+        $nonAdmin = User::factory()->create(['is_active' => true]);
+        $nonAdmin->assignRole('intake_coordinator');
+
+        $this->actingAs($nonAdmin)
+            ->deleteJson("/api/v1/customers/{$customer->id}")
+            ->assertStatus(403);
+
+        $this->actingAs($this->admin)
+            ->deleteJson("/api/v1/customers/{$customer->id}")
+            ->assertStatus(200);
+
+        $this->assertDatabaseMissing('customers', ['id' => $customer->id]);
+    }
 }

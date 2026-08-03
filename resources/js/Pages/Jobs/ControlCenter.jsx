@@ -1133,8 +1133,14 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                 })()}
               </>
             ) : (
-              <div className="h-full flex items-center justify-center text-[#666666] text-xs">
-                Select a job from the left list to view details.
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center text-[#666666] space-y-2">
+                <span className="material-symbols-outlined text-4xl text-[#94a3b8]">inbox</span>
+                <p className="font-bold text-sm text-[#0B0B0B]">No Work Order Selected</p>
+                <p className="text-xs max-w-sm text-[#666666]">
+                  {jobs.length === 0
+                    ? `There are currently no work orders in the ${selectedStageConfig?.label?.toLowerCase() || 'selected'} stage.`
+                    : 'Select a work order from the left list to view operational details and perform actions.'}
+                </p>
               </div>
             )}
           </div>

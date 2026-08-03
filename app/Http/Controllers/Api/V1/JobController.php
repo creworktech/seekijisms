@@ -227,7 +227,7 @@ class JobController extends Controller
         }
 
         $tokenNo = $job->token_no;
-        $job->delete();
+        $job->forceDelete();
 
         return response()->json([
             'message' => "Work Order #{$tokenNo} deleted successfully.",

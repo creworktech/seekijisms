@@ -300,6 +300,6 @@ class JobWorkflowTest extends TestCase
             ->deleteJson("/api/v1/jobs/{$job->id}")
             ->assertStatus(200);
 
-        $this->assertSoftDeleted('jobs', ['id' => $job->id]);
+        $this->assertDatabaseMissing('jobs', ['id' => $job->id]);
     }
 }

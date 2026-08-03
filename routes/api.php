@@ -48,6 +48,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/customers', [CustomerController::class, 'store'])->middleware('can:customers.create');
         Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware('can:customers.view');
         Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware('can:customers.update');
+        Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('can:users.manage');
         Route::patch('/customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->middleware('can:customers.toggle');
         Route::get('/customers/{customer}/jobs', [CustomerController::class, 'jobs'])->middleware('can:jobs.view');
 
