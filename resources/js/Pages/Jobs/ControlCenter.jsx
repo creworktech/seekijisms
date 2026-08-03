@@ -511,7 +511,12 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                     {['completed', 'ready', 'delivered'].includes(selectedJob.stage) && (
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">PAYMENT STATUS</p>
-                        {selectedJob.is_paid ? (
+                        {Number(selectedJob.payable_amount ?? selectedJob.final_amount ?? 0) === 0 ? (
+                          <span className="font-bold text-[#64748b] mt-0.5 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">do_not_disturb_on</span>
+                            NO AMOUNT DUE (₹0)
+                          </span>
+                        ) : selectedJob.is_paid ? (
                           <span className="font-bold text-[#10b981] mt-0.5 flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm">verified</span>
                             {formatCurrency(selectedJob.payable_amount || 0)} (PAID)

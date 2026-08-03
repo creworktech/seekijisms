@@ -392,7 +392,9 @@ export default function JobsIndex({ jobs, testers = [], technicians = [], tokenP
                       <span className="text-base text-[#005ea4] font-mono">{formatCurrency(selectedJob.payable_amount || 0)}</span>
                     </div>
                     <div className="pt-1">
-                      {selectedJob.is_paid ? (
+                      {Number(selectedJob.payable_amount || 0) === 0 ? (
+                        <span className="text-xs text-[#64748b] font-bold">✓ No Amount Due (₹0)</span>
+                      ) : selectedJob.is_paid ? (
                         <span className="text-xs text-[#1BAF7A] font-bold">✓ Settled & Paid ({selectedJob.payment_mode || 'Cash'})</span>
                       ) : (
                         <span className="text-xs text-[#D03B3B] font-bold">⚠ Unpaid Balance Dues</span>
