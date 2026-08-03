@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import EditUserModal from '../../Components/Users/EditUserModal';
 import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
+import ConfirmActionModal from '../../Components/Common/ConfirmActionModal';
 import axios from 'axios';
 import { formatDate } from '../../utils/formatters';
 import { notifySuccess, notifyError } from '../../utils/toast';
@@ -12,6 +13,8 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [deleteModalData, setDeleteModalData] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(false);
   const [safetyAlert, setSafetyAlert] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -86,7 +89,7 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
     }
   };
 
-  const handleDeleteUser = async (userObj) => {
+  const handleDeleteUser = (userObj) => {
     if (userObj.id === currentUser?.id) {
       setSafetyAlert({
         title: 'Action Blocked by Safety Guard',
@@ -94,19 +97,29 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
       });
       return;
     }
+    setDeleteModalData(userObj);
+  };
 
-    if (!confirm(`Are you sure you want to delete user ${userObj.name}?`)) return;
-
+  const handleConfirmDeleteUser = async () => {
+    if (!deleteModalData) return;
+    setDeletingUser(true);
     try {
       const headers = sanctumToken ? { Authorization: `Bearer ${sanctumToken}` } : {};
-      await axios.delete(`/api/v1/users/${userObj.id}`, { headers });
+      const res = await axios.delete(`/api/v1/users/${deleteModalData.id}`, { headers });
+      setDeletingUser(false);
+      setDeleteModalData(null);
+      notifySuccess(res.data?.message || 'Staff member deleted successfully');
       router.reload();
     } catch (err) {
+      setDeletingUser(false);
+      setDeleteModalData(null);
       if (err.response?.data?.message) {
         setSafetyAlert({
           title: 'Safety Guard Protection',
           message: err.response.data.message,
         });
+      } else {
+        notifyError('Failed to delete staff member.');
       }
     }
   };
@@ -348,6 +361,21 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
             onSuccess={() => router.reload()}
             userToEdit={editingUser}
             sanctumToken={sanctumToken}
+          />
+        )}
+
+        {/* DELETE USER CONFIRMATION MODAL */}
+        {deleteModalData && (
+          <ConfirmActionModal
+            isOpen={Boolean(deleteModalData)}
+            title="Delete Staff Account"
+            description={`Are you sure you want to permanently delete staff account for ${deleteModalData.name} (${deleteModalData.email})? This action cannot be undone.`}
+            tokenNo={deleteModalData.roles?.[0]?.replace('_', ' ')?.toUpperCase() || 'STAFF'}
+            customerName={deleteModalData.name}
+            customerMobile={deleteModalData.phone || deleteModalData.email}
+            submitting={deletingUser}
+            onClose={() => setDeleteModalData(null)}
+            onConfirm={handleConfirmDeleteUser}
           />
         )}
 
