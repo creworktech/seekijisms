@@ -137,7 +137,7 @@ export default function Login() {
                   required
                   value={data.email}
                   onChange={(e) => setData('email', e.target.value)}
-                  placeholder="admin@seekoji.com"
+                  placeholder="Username or Email"
                   className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#f4f4f2] border border-[#E5E5E5] text-[#0B0B0B] text-sm placeholder-[#666666] focus:outline-none focus:border-[#005ea4] focus:ring-1 focus:ring-[#005ea4] transition-all"
                 />
               </div>
@@ -154,7 +154,7 @@ export default function Login() {
                   required
                   value={data.password}
                   onChange={(e) => setData('password', e.target.value)}
-                  placeholder="••••••••"
+                  placeholder=""
                   className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#f4f4f2] border border-[#E5E5E5] text-[#0B0B0B] text-sm placeholder-[#666666] focus:outline-none focus:border-[#005ea4] focus:ring-1 focus:ring-[#005ea4] transition-all"
                 />
               </div>

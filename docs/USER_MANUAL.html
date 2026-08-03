@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Seekoji SMS - Comprehensive User Manual & Operational Guide</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: 'Inter', sans-serif;
+        font-size: 9px;
+        color: #64748b;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #1e293b;
+      line-height: 1.6;
+      font-size: 12px;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+    }
+
+    /* COVER PAGE (LIGHT MODE) */
+    .cover-page {
+      page-break-after: always;
+      height: 98vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 45px 35px;
+      border-left: 10px solid #005ea4;
+      background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+      color: #1e293b;
+    }
+    .cover-header { margin-bottom: 30px; }
+    .cover-badge {
+      display: inline-block;
+      background: #005ea4;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      margin-bottom: 25px;
+    }
+    .cover-title {
+      font-size: 36px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+      margin: 0 0 15px 0;
+      letter-spacing: -0.5px;
+    }
+    .cover-subtitle {
+      font-size: 16px;
+      font-weight: 500;
+      color: #475569;
+      margin: 0;
+      line-height: 1.5;
+    }
+    .cover-meta {
+      border-top: 2px solid #cbd5e1;
+      padding-top: 25px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .meta-item strong { color: #0f172a; display: block; font-size: 12px; margin-bottom: 3px; }
+
+    /* CONTENT LAYOUT */
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #005ea4;
+      border-bottom: 2px solid #cbd5e1;
+      padding-bottom: 6px;
+      margin-top: 28px;
+      margin-bottom: 14px;
+      page-break-after: avoid;
+    }
+    .subsection-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+
+    p { margin-top: 0; margin-bottom: 10px; text-align: justify; }
+
+    /* CALLOUT BOXES */
+    .note-box {
+      background: #f0f9ff;
+      border-left: 4px solid #0284c7;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 12px 0;
+      font-size: 11px;
+    }
+    .note-box strong { color: #0369a1; }
+
+    .warning-box {
+      background: #fffbe6;
+      border-left: 4px solid #d97706;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 12px 0;
+      font-size: 11px;
+    }
+    .warning-box strong { color: #b45309; }
+
+    .success-box {
+      background: #f0fdf4;
+      border-left: 4px solid #16a34a;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 12px 0;
+      font-size: 11px;
+    }
+    .success-box strong { color: #15803d; }
+
+    /* TABLES */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 11px;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tr:nth-child(even) { background: #f8fafc; }
+
+    /* BADGES */
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 9.5px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+    }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; }
+    .badge-slate { background: #f1f5f9; color: #475569; }
+
+    code, .code-tok {
+      font-family: 'JetBrains Mono', monospace;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 10.5px;
+    }
+
+    ol, ul { margin-top: 0; padding-left: 18px; }
+    li { margin-bottom: 5px; }
+
+    .step-num {
+      display: inline-block;
+      background: #005ea4;
+      color: #ffffff;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 18px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+
+  <!-- COVER PAGE -->
+  <div class="cover-page">
+    <div class="cover-header">
+      <div class="cover-badge">Complete User Handbook</div>
+      <h1 class="cover-title">Seekoji SMS<br>User Manual & Operations Guide</h1>
+      <p class="cover-subtitle">Step-by-Step Onboarding & Operational Reference Guide for Intake Coordinators, Technicians, Accounts Staff, and Administrators</p>
+    </div>
+
+    <div class="cover-meta">
+      <div class="meta-item">
+        <strong>Document Version:</strong> 3.0 (Comprehensive Release)
+      </div>
+      <div class="meta-item">
+        <strong>Target Roles:</strong> Admin, Intake Coordinator, Technician
+      </div>
+      <div class="meta-item">
+        <strong>System Scope:</strong> Repair Center Operations & Accounts Management
+      </div>
+      <div class="meta-item">
+        <strong>Last Updated:</strong> August 2026
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: SYSTEM OVERVIEW -->
+  <h2 class="section-title">1. Welcome to Seekoji SMS</h2>
+  <p>
+    <strong>Seekoji SMS</strong> is an end-to-end Service Management System designed specifically for electrical equipment repair centers. Whether you manage single-item walk-in customers or bulk equipment intake from industrial clients, Seekoji SMS simplifies job tracking, diagnostics, budget approvals, repair workflows, and financial settlements.
+  </p>
+
+  <div class="success-box">
+    <strong>Key Benefits for Your Workshop:</strong>
+    <ul>
+      <li><strong>Pre-Generated Token Sequence:</strong> Know exact token numbers (e.g. <code class="code-tok">#SES1</code>, <code class="code-tok">#SES2</code>) before saving jobs.</li>
+      <li><strong>Structured 8-Stage Pipeline:</strong> Complete visibility into every repair stage from intake to delivery.</li>
+      <li><strong>Zero Duplication & Customer ID:</strong> Auto-generated Customer IDs (e.g. <code class="code-tok">ID00001</code>) linked to mobile numbers.</li>
+      <li><strong>Fair Financial Dues:</strong> Clear distinction between active dues, paid orders, and rejected estimates with <code class="badge badge-slate">NO AMOUNT DUE (₹0)</code> handling.</li>
+    </ul>
+  </div>
+
+  <h3 class="subsection-title">1.1 User Roles & Access Privileges</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>User Role</th>
+        <th>Primary Responsibilities</th>
+        <th>Accessible Modules & Action Scope</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Admin</strong></td>
+        <td>Overall business oversight, financial settlements, staff creation, job & customer deletion.</td>
+        <td>Access to ALL pages (<code class="badge badge-purple">Dashboard</code>, <code class="badge badge-purple">JCC</code>, <code class="badge badge-purple">All Jobs</code>, <code class="badge badge-purple">Delivery</code>, <code class="badge badge-purple">Customers</code>, <code class="badge badge-purple">Accounts</code>, <code class="badge badge-purple">Reports</code>, <code class="badge badge-purple">Users</code>, <code class="badge badge-purple">Settings</code>). Only role allowed to delete records.</td>
+      </tr>
+      <tr>
+        <td><strong>Intake Coordinator</strong></td>
+        <td>Customer registration, equipment intake, token receipt issuing, customer handover.</td>
+        <td>Access to <code class="badge badge-blue">Job Intake Modal</code>, <code class="badge badge-blue">Job Control Center</code>, <code class="badge badge-blue">Customers Directory</code>, and <code class="badge badge-blue">Delivery</code>. Cannot alter financial settings or delete records.</td>
+      </tr>
+      <tr>
+        <td><strong>Technician / Tester</strong></td>
+        <td>Equipment testing, technical fault reporting, repair work execution, final bill entry.</td>
+        <td>Mainly operates inside <code class="badge badge-amber">Under Testing</code> and <code class="badge badge-amber">Under Repair</code> stages. Enters diagnostic findings and required repair budgets.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SECTION 2: NAVIGATION & USER MANAGEMENT -->
+  <h2 class="section-title">2. Interface Layout & Staff Account Setup</h2>
+
+  <h3 class="subsection-title">2.1 Navigation Bar & Main Views</h3>
+  <p>
+    The left sidebar provides instant 1-click access to all modules:
+  </p>
+  <ul>
+    <li><strong>Dashboard:</strong> Executive summary tiles showing active job counts, revenue stats, and stage distribution charts.</li>
+    <li><strong>Job Control Center (JCC):</strong> Interactive 8-stage Kanban workspace designed for daily operations.</li>
+    <li><strong>All Jobs:</strong> Tabular view with advanced multi-filter search, sorting, and job drawer.</li>
+    <li><strong>Delivery:</strong> Dispatch desk list showing items ready for customer collection.</li>
+    <li><strong>Customers:</strong> Customer database with profile drawers, history logs, and delete options.</li>
+    <li><strong>Accounts:</strong> Financial ledger tracking collected cash/UPI revenue and pending customer dues.</li>
+    <li><strong>Reports:</strong> Exportable analytics reports (CSV and printable PDF work order receipts).</li>
+    <li><strong>Users:</strong> Staff user account management (Admin only).</li>
+    <li><strong>Settings:</strong> Configure token prefixes (<code class="code-tok">SES</code>), customer prefixes (<code class="code-tok">C</code>), and inspection fees.</li>
+  </ul>
+
+  <h3 class="subsection-title">2.2 Creating Staff User Accounts (Admin Only)</h3>
+  <ol>
+    <li>Navigate to the <strong>Users</strong> menu in the sidebar.</li>
+    <li>Click <strong>+ Add New User</strong>.</li>
+    <li>Fill in User Name, Email, Mobile Number, and Select Role (<code class="code-tok">Admin</code>, <code class="code-tok">Intake Coordinator</code>, or <code class="code-tok">Technician</code>).</li>
+    <li>Enter the password in a single field (password confirmation field is removed for speed and simplicity).</li>
+    <li>Click <strong>Save User</strong>. The staff member can now log in immediately.</li>
+  </ol>
+
+  <!-- SECTION 3: CUSTOMER MANAGEMENT -->
+  <div class="page-break"></div>
+  <h2 class="section-title">3. Customer Registration & Lookup</h2>
+  <p>
+    Every customer profile is assigned a permanent system ID (e.g. <code class="code-tok">ID00001</code>). Seekoji SMS verifies mobile numbers in real time to prevent duplicate profiles.
+  </p>
+
+  <h3 class="subsection-title">3.1 Step-by-Step Customer Creation</h3>
+  <ol>
+    <li>Click <strong>Customers</strong> in the sidebar and click <strong>+ Add Customer</strong> (or click <em>New Customer</em> inside the Intake Modal).</li>
+    <li>Type the customer's 10-digit mobile number. As you type, the system checks the database:
+      <ul>
+        <li>If mobile exists: System displays <em>"Customer Already Registered"</em> and auto-fills their details.</li>
+        <li>If mobile is new: System enables fields for Name, Email, Address, and City.</li>
+      </ul>
+    </li>
+    <li>Fill in Customer Name and click <strong>Save Customer</strong>.</li>
+    <li>The new customer receives a permanent customer code (e.g. <code class="code-tok">C00002</code>).</li>
+  </ol>
+
+  <div class="warning-box">
+    <strong>Deleting Customer Records:</strong> Only Admins can delete customer accounts. Clicking the trash button triggers a custom confirmation modal to prevent accidental deletion.
+  </div>
+
+  <!-- SECTION 4: JOB INTAKE & PRE-GENERATED TOKENS -->
+  <h2 class="section-title">4. Job Intake & Token Pre-Generation</h2>
+  <p>
+    The <strong>Job Intake Modal</strong> handles both single equipment intake and multi-product bulk intake.
+  </p>
+
+  <h3 class="subsection-title">4.1 Pre-Generated Token Sequence Feature</h3>
+  <p>
+    When you open the Intake Modal, Seekoji SMS automatically previews the exact token numbers assigned to each product (e.g., <code class="badge badge-blue">Token: #SES1</code>, <code class="badge badge-blue">Token: #SES2</code>) <em>before</em> you save to the database.
+  </p>
+
+  <ol>
+    <li>Click the top right <strong>NEW JOBS</strong> button.</li>
+    <li>Select or create the customer using the searchable customer dropdown.</li>
+    <li>For Product 1: Enter Product Name (e.g. ACGT), Brand/Make (e.g. LG), Serial Number, Power Rating, and Customer Reported Fault. Notice the pre-assigned token badge <code class="badge badge-blue">Token: #SES1</code>.</li>
+    <li>If customer brought multiple units, click <strong>+ Add Another Product</strong>. Notice Product 2 automatically gets badge <code class="badge badge-blue">Token: #SES2</code>.</li>
+    <li>Click <strong>Create Work Orders</strong>. All work orders are saved under consecutive token numbers in one click!</li>
+  </ol>
+
+  <div class="note-box">
+    <strong>Token Sync Button:</strong> If another staff member created a job while your modal was open, click the <em>Sync Tokens</em> refresh icon to update your token preview instantly.
+  </div>
+
+  <!-- SECTION 5: JOB CONTROL CENTER (JCC) - STAGE-BY-STAGE GUIDE -->
+  <div class="page-break"></div>
+  <h2 class="section-title">5. Job Control Center (JCC) - 8 Workflow Stages Guide</h2>
+  <p>
+    The <strong>Job Control Center (JCC)</strong> divides your service workflow into 8 clear sequential stages. Clicking any stage pill filters jobs instantly.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Stage Name</th>
+        <th>What It Means</th>
+        <th>Action Required & Next Steps</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. NEW JOBS</strong></td>
+        <td>Equipment newly logged at reception desk.</td>
+        <td>Review reported fault, select a tester from dropdown, and click <span class="badge badge-blue">Assign Tester</span>. (Or click <span class="badge badge-red">Cancel Job</span> if customer cancels at intake).</td>
+      </tr>
+      <tr>
+        <td><strong>2. UNDER TESTING</strong></td>
+        <td>Tester is diagnosing hardware on testing bench.</td>
+        <td>
+          Tester opens job, inputs <em>Technical Findings</em>, and chooses:
+          <br>• <span class="badge badge-green">No Fault Found</span> (Moves to Completed, inspection fee applied)
+          <br>• <span class="badge badge-purple">Fault Confirmed</span> (Enter Estimated Budget & move to Approval)
+          <br>• <span class="badge badge-red">Not Repairable</span> (Moves to Completed, inspection fee applied)
+        </td>
+      </tr>
+      <tr>
+        <td><strong>3. AWAITING APPROVAL</strong></td>
+        <td>Estimated budget is presented to customer.</td>
+        <td>
+          Call customer with estimated budget.
+          <br>• If Approved: Click <span class="badge badge-green">Approve</span>, enter approved budget, and assign repair technician. Moves to Under Repair.
+          <br>• If Rejected: Click <span class="badge badge-red">Estimate Rejected</span>. Moves to Completed. UI displays <code class="badge badge-slate">NO AMOUNT DUE (₹0)</code>.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>4. UNDER REPAIR</strong></td>
+        <td>Technician is actively repairing equipment.</td>
+        <td>
+          Technician replaces parts and finishes repair:
+          <br>• Click <span class="badge badge-green">Work Done</span>: Enter final bill amount and work summary. Moves to Completed.
+          <br>• Click <span class="badge badge-amber">Hold / Pending</span>: If waiting for parts. Moves to Pending.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>5. PENDING</strong></td>
+        <td>Work is temporarily paused (waiting for spare parts).</td>
+        <td>Once spare parts arrive at workshop, click <span class="badge badge-blue">Resume Repair</span> to return job to Under Repair.</td>
+      </tr>
+      <tr>
+        <td><strong>6. COMPLETED / PAYMENT</strong></td>
+        <td>Repair complete or estimate rejected. Payment settlement stage.</td>
+        <td>
+          Review final bill:
+          <br>• If Dues Payable: Select Payment Mode (Cash, UPI, Bank) and click <span class="badge badge-green">Collect Payment & Release</span>. Moves to Ready for Delivery.
+          <br>• If Estimate Rejected / No Fault: System displays <code class="badge badge-slate">NO AMOUNT DUE (₹0)</code>. Click <span class="badge badge-green">Release to Delivery</span>.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>7. READY FOR DELIVERY</strong></td>
+        <td>Equipment is packed and sitting at dispatch desk.</td>
+        <td>When customer arrives for pickup, verify handover person and click <span class="badge badge-green">Handover to Customer</span>. Moves to Delivered.</td>
+      </tr>
+      <tr>
+        <td><strong>8. DELIVERED</strong></td>
+        <td>Equipment successfully returned to customer.</td>
+        <td>Archived completed job record. Contains full timeline audit history.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SECTION 6: FINANCIAL DUES & ZERO DUE EXPLANATION -->
+  <h2 class="section-title">6. Financial Dues & Payment Status Explanation</h2>
+  <p>
+    Seekoji SMS clearly differentiates between orders requiring payment and zero-due orders:
+  </p>
+
+  <ul>
+    <li><strong style="color: #10b981;">PAID (₹X,XXX):</strong> Repair amount or inspection fee collected and settled via Cash, UPI, or Bank Transfer.</li>
+    <li><strong style="color: #d97706;">UNPAID (₹X,XXX):</strong> Final repair bill or inspection fee remains uncollected (released on credit or pending payment).</li>
+    <li><strong style="color: #64748b;">NO AMOUNT DUE (₹0):</strong> Automatically displayed when estimate was rejected by customer or no repair fee applies. Ensures staff do not confuse zero dues with unpaid bills!</li>
+  </ul>
+
+  <!-- SECTION 7: REPORTS & DATA EXPORTS -->
+  <h2 class="section-title">7. Reports & Data Export</h2>
+  <p>
+    The <strong>Reports</strong> module allows workshop managers to inspect stage counts, total collected revenue, and export data:
+  </p>
+  <ul>
+    <li><strong>CSV Export:</strong> Click <em>Export CSV</em> to download a spreadsheet of filtered work orders.</li>
+    <li><strong>Print Summaries:</strong> Click <em>Print Summary</em> to print a clean physical paper work order receipt for shop archives.</li>
+  </ul>
+
+</body>
+</html>
