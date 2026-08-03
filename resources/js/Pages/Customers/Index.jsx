@@ -1,17 +1,33 @@
 import React, { useState } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import CreateCustomerModal from '../../Components/Customers/CreateCustomerModal';
+import EditCustomerModal from '../../Components/Customers/EditCustomerModal';
 import ShowCustomerDrawer from '../../Components/Customers/ShowCustomerDrawer';
+import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
 import axios from 'axios';
 import { formatDate } from '../../utils/formatters';
 import { exportCustomersToCSV, exportCustomersToPDF } from '../../utils/exportHelper';
 
 export default function Customers({ customers, filters, sanctumToken }) {
+  const { auth } = usePage().props;
+  const isAdmin = auth?.user?.roles?.includes('admin');
+
   const [search, setSearch] = useState(filters?.search || '');
   const [status, setStatus] = useState(filters?.status || '');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  React.useEffect(() => {
+    const unbindStart = router.on('start', () => setIsNavigating(true));
+    const unbindFinish = router.on('finish', () => setIsNavigating(false));
+    return () => {
+      unbindStart();
+      unbindFinish();
+    };
+  }, []);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -77,7 +93,8 @@ export default function Customers({ customers, filters, sanctumToken }) {
         </div>
 
         {/* CARD CONTAINER */}
-        <div className="sk-card">
+        <div className="sk-card relative">
+          <TableLoadingOverlay loading={isNavigating} text="Loading customer records..." />
 
           {/* FILTER BAR */}
           <div className="flex justify-between items-center p-4 border-b border-[#E5E5E5] flex-wrap gap-3">
@@ -87,46 +104,50 @@ export default function Customers({ customers, filters, sanctumToken }) {
               </span>
               <input
                 type="text"
-                placeholder="Search by customer name, mobile number, code..."
+                placeholder="Search by name, phone, code..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-11 pr-3 py-2 bg-[#f4f4f2] border border-[#E5E5E5] rounded-lg text-xs outline-none focus:border-[#005ea4]"
+                className="w-full pl-10 pr-4 py-2 bg-[#f4f4f2] border border-[#E5E5E5] rounded-lg text-xs outline-none focus:border-[#005ea4]"
               />
             </form>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-[#666666] uppercase">Filter Status:</span>
               <button
                 onClick={() => handleStatusFilter('')}
-                className={`sk-btn ${status === '' ? 'sk-btn-primary' : 'sk-btn-outline'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${status === '' ? 'bg-[#005ea4] text-white' : 'bg-[#f4f4f2] text-[#666666] hover:bg-[#e5e5e0]'
+                  }`}
               >
-                All Customers
+                All
               </button>
               <button
                 onClick={() => handleStatusFilter('active')}
-                className={`sk-btn ${status === 'active' ? 'sk-btn-primary' : 'sk-btn-outline'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${status === 'active' ? 'bg-[#1BAF7A] text-white' : 'bg-[#f4f4f2] text-[#666666] hover:bg-[#e5e5e0]'
+                  }`}
               >
                 Active
               </button>
               <button
                 onClick={() => handleStatusFilter('inactive')}
-                className={`sk-btn ${status === 'inactive' ? 'sk-btn-primary' : 'sk-btn-outline'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${status === 'inactive' ? 'bg-[#717783] text-white' : 'bg-[#f4f4f2] text-[#666666] hover:bg-[#e5e5e0]'
+                  }`}
               >
                 Inactive
               </button>
             </div>
           </div>
 
-          {/* TABLE */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="bg-[#f4f4f2] text-[#666666] uppercase text-[10px] font-bold tracking-wider border-b border-[#E5E5E5]">
-                <tr>
-                  <th className="py-3.5 px-4">CUSTOMER</th>
-                  <th className="py-3.5 px-4">MOBILE NUMBER</th>
-                  <th className="py-3.5 px-4">ADDRESS</th>
-                  <th className="py-3.5 px-4">ACTIVE</th>
-                  <th className="py-3.5 px-4">REGISTERED DATE</th>
-                  <th className="py-3.5 px-4 text-right">ACTIONS</th>
+          {/* TABLE CONTAINER */}
+          <div className="overflow-x-auto thin-sb">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#f9f9f7] border-b border-[#E5E5E5] text-[#666666] font-bold uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Customer Name & Code</th>
+                  <th className="py-3.5 px-4">Mobile</th>
+                  <th className="py-3.5 px-4">Address</th>
+                  <th className="py-3.5 px-4">Dashboard Status</th>
+                  <th className="py-3.5 px-4">Registered On</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E5E5]">
@@ -136,7 +157,7 @@ export default function Customers({ customers, filters, sanctumToken }) {
                       ? cust.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
                       : 'CU';
                     return (
-                      <tr key={cust.id} className="hover:bg-[#f9f9f7] transition-colors">
+                      <tr key={cust.id} className="hover:bg-[#F9F9F9] transition-colors">
 
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
@@ -175,23 +196,36 @@ export default function Customers({ customers, filters, sanctumToken }) {
                             {/* Eye icon button to view details */}
                             <button
                               onClick={() => setSelectedCustomer(cust)}
-                              className="p-1.5 rounded-lg hover:bg-[#F0F7FF] text-[#005ea4] transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-[#F0F7FF] text-[#005ea4] transition-colors cursor-pointer"
                               title="View Details & Job History"
                             >
                               <span className="material-symbols-outlined text-xl">visibility</span>
                             </button>
 
-                            {/* Active/Inactive status toggle button */}
-                            <button
-                              onClick={() => handleToggleStatus(cust)}
-                              className={`p-1 rounded-lg transition-colors flex items-center ${cust.is_active ? 'text-[#1BAF7A] hover:bg-emerald-50' : 'text-[#717783] hover:bg-slate-100'
-                                }`}
-                              title={cust.is_active ? 'Dashboard Active - Click to Hide' : 'Hidden - Click to Show on Dashboard'}
-                            >
-                              <span className="material-symbols-outlined text-2xl">
-                                {cust.is_active ? 'toggle_on' : 'toggle_off'}
-                              </span>
-                            </button>
+                            {/* Edit Customer button for Admin */}
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditingCustomer(cust)}
+                                className="p-1.5 rounded-lg hover:bg-[#F0F7FF] text-[#005ea4] transition-colors cursor-pointer"
+                                title="Edit Customer Details"
+                              >
+                                <span className="material-symbols-outlined text-xl">edit</span>
+                              </button>
+                            )}
+
+                            {/* Active/Inactive status toggle button for Admin only */}
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleToggleStatus(cust)}
+                                className={`p-1 rounded-lg transition-colors flex items-center cursor-pointer ${cust.is_active ? 'text-[#1BAF7A] hover:bg-emerald-50' : 'text-[#717783] hover:bg-slate-100'
+                                  }`}
+                                title={cust.is_active ? 'Dashboard Active - Click to Hide' : 'Hidden - Click to Show on Dashboard'}
+                              >
+                                <span className="material-symbols-outlined text-2xl">
+                                  {cust.is_active ? 'toggle_on' : 'toggle_off'}
+                                </span>
+                              </button>
+                            )}
                           </div>
                         </td>
 
@@ -214,7 +248,7 @@ export default function Customers({ customers, filters, sanctumToken }) {
             <span>Showing <b>{customerList.length}</b> of <b>{pagination?.total || customerList.length}</b> customers (30 per page)</span>
             <div className="flex gap-1">
               {pagination?.prev ? (
-                <Link href={pagination.prev} className="w-8 h-8 rounded border border-[#E5E5E5] bg-white flex items-center justify-center font-bold text-[#0B0B0B]">
+                <Link href={pagination.prev} className="w-8 h-8 rounded border border-[#E5E5E5] bg-[#fff] flex items-center justify-center font-bold text-[#0B0B0B]">
                   &lsaquo;
                 </Link>
               ) : (
@@ -246,11 +280,23 @@ export default function Customers({ customers, filters, sanctumToken }) {
           sanctumToken={sanctumToken}
         />
 
+        <EditCustomerModal
+          customer={editingCustomer}
+          isOpen={!!editingCustomer}
+          onClose={() => setEditingCustomer(null)}
+          onSuccess={() => router.reload()}
+          sanctumToken={sanctumToken}
+        />
+
         <ShowCustomerDrawer
           customer={selectedCustomer}
           isOpen={!!selectedCustomer}
           onClose={() => setSelectedCustomer(null)}
           sanctumToken={sanctumToken}
+          onEdit={(cust) => {
+            setSelectedCustomer(null);
+            setEditingCustomer(cust);
+          }}
         />
 
       </div>

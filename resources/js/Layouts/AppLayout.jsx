@@ -18,6 +18,17 @@ export default function AppLayout({ children, title = 'Dashboard', description =
       : null
   );
 
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  React.useEffect(() => {
+    const unbindStart = router.on('start', () => setIsNavigating(true));
+    const unbindFinish = router.on('finish', () => setIsNavigating(false));
+    return () => {
+      unbindStart();
+      unbindFinish();
+    };
+  }, []);
+
   React.useEffect(() => {
     if (flash?.success) {
       setToast({ type: 'success', message: flash.success });
@@ -53,7 +64,7 @@ export default function AppLayout({ children, title = 'Dashboard', description =
     { label: 'All Jobs', href: '/jobs', icon: 'format_list_bulleted', show: hasPermission(user, 'jobs.view') },
     { label: 'Delivery', href: '/delivery', icon: 'local_shipping', show: hasPermission(user, 'jobs.view') },
     { label: 'Customers', href: '/customers', icon: 'groups', show: hasPermission(user, 'customers.view') },
-    { label: 'Accounts', href: '/accounts', icon: 'account_balance_wallet', show: user?.roles?.includes('admin') || hasPermission(user, 'reports.view') },
+    { label: 'Accounts', href: '/accounts', icon: 'account_balance_wallet', show: user?.roles?.includes('admin') },
     { label: 'Reports', href: '/reports', icon: 'analytics', show: hasPermission(user, 'reports.view') },
     { label: 'Users', href: '/users', icon: 'group_add', show: hasPermission(user, 'users.manage') },
     { label: 'Settings', href: '/settings', icon: 'settings', show: hasPermission(user, 'settings.manage') },
@@ -75,6 +86,11 @@ export default function AppLayout({ children, title = 'Dashboard', description =
         <title>{`${title} | Seekoji Service Management`}</title>
         <meta name="description" content={description} />
       </Head>
+
+      {/* Top Global Progress Bar on Page/Query Navigation */}
+      {isNavigating && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-[#005ea4] animate-pulse shadow-md" />
+      )}
 
       {/* Toast Alert System */}
       <AnimatePresence>

@@ -42,8 +42,6 @@ class RolesAndPermissionsSeeder extends Seeder
         $coordinatorRole->syncPermissions([
             'customers.view',
             'customers.create',
-            'customers.update',
-            'customers.toggle',
             'jobs.view',
             'jobs.create',
             'jobs.deliver',

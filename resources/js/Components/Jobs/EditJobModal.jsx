@@ -257,9 +257,12 @@ export default function EditJobModal({ job, isOpen, onClose, onSuccess, sanctumT
               <button
                 type="submit"
                 disabled={loading}
-                className="sk-btn sk-btn-primary cursor-pointer disabled:opacity-50"
+                className="sk-btn sk-btn-primary cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none flex items-center gap-1.5"
               >
-                {loading ? 'Saving Changes...' : 'Save Job Changes'}
+                <span className={`material-symbols-outlined text-base ${loading ? 'animate-spin' : ''}`}>
+                  {loading ? 'sync' : 'save'}
+                </span>
+                <span>{loading ? 'Saving Changes...' : 'Save Job Changes'}</span>
               </button>
             </div>
 

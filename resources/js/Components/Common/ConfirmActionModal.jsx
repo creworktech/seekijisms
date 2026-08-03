@@ -82,9 +82,12 @@ export default function ConfirmActionModal({
               type="button"
               disabled={submitting}
               onClick={onConfirm}
-              className="px-4 py-2 bg-[#0f172a] hover:bg-[#1e293b] text-white font-bold text-xs rounded-xl shadow transition-all disabled:opacity-50 cursor-pointer"
+              className="px-4 py-2 bg-[#0f172a] hover:bg-[#1e293b] text-white font-bold text-xs rounded-xl shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none flex items-center gap-1.5 cursor-pointer"
             >
-              {submitting ? 'Processing...' : 'Confirm'}
+              <span className={`material-symbols-outlined text-base ${submitting ? 'animate-spin' : ''}`}>
+                {submitting ? 'sync' : 'check'}
+              </span>
+              <span>{submitting ? 'Processing...' : 'Confirm'}</span>
             </button>
 
             {showWhatsApp && onConfirmWhatsApp && (
@@ -92,9 +95,11 @@ export default function ConfirmActionModal({
                 type="button"
                 disabled={submitting}
                 onClick={onConfirmWhatsApp}
-                className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold text-xs rounded-xl shadow-md hover:shadow transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold text-xs rounded-xl shadow-md hover:shadow transition-all flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
               >
-                <span className="material-symbols-outlined text-base">chat</span>
+                <span className={`material-symbols-outlined text-base ${submitting ? 'animate-spin' : ''}`}>
+                  {submitting ? 'sync' : 'chat'}
+                </span>
                 <span>{submitting ? 'Processing...' : 'Confirm & WhatsApp'}</span>
               </button>
             )}

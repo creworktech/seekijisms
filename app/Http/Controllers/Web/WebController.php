@@ -280,8 +280,7 @@ class WebController extends Controller
             })->values();
 
         $prefix = Setting::get('token_prefix', 'SES');
-        $dateStr = now()->format('dm');
-        $previewToken = $prefix . $dateStr . '...';
+        $previewToken = $prefix . '1, ' . $prefix . '2...';
 
         $stageCountsRaw = DB::table('jobs')
             ->whereNull('deleted_at')
@@ -354,6 +353,10 @@ class WebController extends Controller
             }
         }
 
+        if ($customerId = $request->input('customer_id')) {
+            $query->where('customer_id', $customerId);
+        }
+
         if ($stage = $request->input('stage')) {
             $query->where('stage', $stage);
         }
@@ -388,6 +391,8 @@ class WebController extends Controller
             ->paginate($request->input('per_page', 30))
             ->withQueryString();
 
+        $customers = Customer::orderBy('name', 'asc')->get(['id', 'name', 'customer_code', 'mobile']);
+
         $testers = User::where('is_active', true)
             ->whereHas('roles', fn ($q) => $q->whereIn('name', ['admin', 'tester']))
             ->get(['id', 'name', 'email']);
@@ -397,29 +402,33 @@ class WebController extends Controller
             ->get(['id', 'name', 'email']);
 
         $prefix = Setting::get('token_prefix', 'SES');
-        $dateStr = now()->format('dm');
-        $previewToken = $prefix . $dateStr . '...';
+        $previewToken = $prefix . '1, ' . $prefix . '2...';
+
+        $countQuery = Job::query()->when($customerId, fn ($q) => $q->where('customer_id', $customerId));
+
+        $totalJobsCount = (clone $countQuery)->count();
 
         $outcomeGroupCounts = [
-            'new_jobs' => Job::where('stage', 'new')->count(),
-            'in_progress' => Job::whereIn('stage', ['testing', 'approval', 'repair'])->whereNull('outcome')->count(),
-            'pending' => Job::where('stage', 'pending')->count(),
-            'repaired' => Job::whereIn('outcome', ['work_done', 'ok_no_fault'])->count(),
-            'not_approved' => Job::where('outcome', 'not_approved')->count(),
-            'not_repairable' => Job::where('outcome', 'not_repairable')->count(),
-            'cancelled' => Job::where('outcome', 'cancelled')->count(),
-            'ready' => Job::where('stage', 'ready')->count(),
-            'delivered' => Job::where('stage', 'delivered')->count(),
+            'new_jobs' => (clone $countQuery)->where('stage', 'new')->count(),
+            'in_progress' => (clone $countQuery)->whereIn('stage', ['testing', 'approval', 'repair'])->whereNull('outcome')->count(),
+            'pending' => (clone $countQuery)->where('stage', 'pending')->count(),
+            'repaired' => (clone $countQuery)->whereIn('outcome', ['work_done', 'ok_no_fault'])->count(),
+            'not_approved' => (clone $countQuery)->where('outcome', 'not_approved')->count(),
+            'not_repairable' => (clone $countQuery)->where('outcome', 'not_repairable')->count(),
+            'cancelled' => (clone $countQuery)->where('outcome', 'cancelled')->count(),
+            'ready' => (clone $countQuery)->where('stage', 'ready')->count(),
+            'delivered' => (clone $countQuery)->where('stage', 'delivered')->count(),
         ];
 
         return Inertia::render('Jobs/AllJobs', [
             'jobs' => JobResource::collection($jobs)->response()->getData(true),
-            'totalJobsCount' => Job::count(),
+            'customers' => $customers,
+            'totalJobsCount' => $totalJobsCount,
             'outcomeGroupCounts' => $outcomeGroupCounts,
             'testers' => $testers,
             'technicians' => $technicians,
             'tokenPreview' => $previewToken,
-            'filters' => $request->only(['search', 'stage', 'outcome', 'outcome_group', 'priority', 'technician_id', 'from', 'to', 'unpaid']),
+            'filters' => $request->only(['search', 'stage', 'outcome', 'outcome_group', 'priority', 'technician_id', 'customer_id', 'from', 'to', 'unpaid']),
             'sanctumToken' => session('sanctum_token'),
         ]);
     }
@@ -481,10 +490,6 @@ class WebController extends Controller
             $query->where('outcome', $outcome);
         }
 
-        if ($technicianId = $request->input('technician_id')) {
-            $query->where('technician_id', $technicianId);
-        }
-
         if ($request->boolean('unpaid')) {
             $query->where('is_paid', false)
                   ->whereNotNull('payable_amount')
@@ -494,12 +499,48 @@ class WebController extends Controller
         $jobs = $query->paginate($request->input('per_page', 30))
             ->withQueryString();
 
-        $technicians = User::where('is_active', true)->get(['id', 'name']);
+        $analyticsQuery = Job::query();
+        if ($from) {
+            $analyticsQuery->whereDate('in_date', '>=', $from);
+        }
+        if ($to) {
+            $analyticsQuery->whereDate('in_date', '<=', $to);
+        }
+        if ($stage) {
+            $analyticsQuery->where('stage', $stage);
+        }
+        if ($outcome) {
+            $analyticsQuery->where('outcome', $outcome);
+        }
+        if ($request->boolean('unpaid')) {
+            $analyticsQuery->where('is_paid', false)
+                   ->whereNotNull('payable_amount')
+                   ->where('payable_amount', '>', 0);
+        }
+
+        $totalJobs = (clone $analyticsQuery)->count();
+        $completedJobs = (clone $analyticsQuery)->whereIn('stage', ['completed', 'ready', 'delivered'])->count();
+
+        $analytics = [
+            'total_jobs' => $totalJobs,
+            'total_payable' => (float) (clone $analyticsQuery)->sum('payable_amount'),
+            'total_paid' => (float) (clone $analyticsQuery)->where('is_paid', true)->sum('payable_amount'),
+            'total_unpaid' => (float) (clone $analyticsQuery)->where('is_paid', false)->where('payable_amount', '>', 0)->sum('payable_amount'),
+            'completed_count' => $completedJobs,
+            'completion_rate' => $totalJobs > 0 ? round(($completedJobs / $totalJobs) * 100, 1) : 0,
+            'outcomes' => [
+                'work_done' => (clone $analyticsQuery)->where('outcome', 'work_done')->count(),
+                'ok_no_fault' => (clone $analyticsQuery)->where('outcome', 'ok_no_fault')->count(),
+                'not_approved' => (clone $analyticsQuery)->where('outcome', 'not_approved')->count(),
+                'not_repairable' => (clone $analyticsQuery)->where('outcome', 'not_repairable')->count(),
+                'cancelled' => (clone $analyticsQuery)->where('outcome', 'cancelled')->count(),
+            ],
+        ];
 
         return Inertia::render('Reports/Index', [
             'jobs' => JobResource::collection($jobs)->response()->getData(true),
-            'technicians' => $technicians,
-            'filters' => $request->only(['from', 'to', 'stage', 'outcome', 'technician_id', 'unpaid']),
+            'analytics' => $analytics,
+            'filters' => $request->only(['from', 'to', 'stage', 'outcome', 'unpaid']),
             'sanctumToken' => session('sanctum_token'),
         ]);
     }
@@ -522,6 +563,10 @@ class WebController extends Controller
 
     public function accounts(Request $request): Response
     {
+        if (! $request->user()?->hasRole('admin')) {
+            abort(403, 'Unauthorized. Only admins can access the Accounts module.');
+        }
+
         $query = Job::with(['customer', 'creator', 'technician']);
 
         // Customer Filter
@@ -669,7 +714,7 @@ class WebController extends Controller
         $allSettings = [
             'inspection_fee' => Setting::get('inspection_fee', 250),
             'token_prefix' => Setting::get('token_prefix', 'SES'),
-            'customer_code_prefix' => Setting::get('customer_code_prefix', 'ID'),
+            'customer_code_prefix' => Setting::get('customer_code_prefix', 'C'),
             'business_name' => Setting::get('business_name', 'Seekoji Electric'),
             'whatsapp_enabled' => Setting::get('whatsapp_enabled', '0'),
         ];
@@ -693,5 +738,14 @@ class WebController extends Controller
     public function updateJob(\App\Http\Requests\JobUpdateRequest $request, Job $job): \Illuminate\Http\JsonResponse
     {
         return app(\App\Http\Controllers\Api\V1\JobController::class)->update($request, $job);
+    }
+
+    public function destroyJob(Request $request, Job $job): \Illuminate\Http\JsonResponse
+    {
+        if (! $request->user()?->hasRole('admin')) {
+            abort(403, 'Unauthorized. Only admins can delete work orders.');
+        }
+
+        return app(\App\Http\Controllers\Api\V1\JobController::class)->destroy($request, $job);
     }
 }

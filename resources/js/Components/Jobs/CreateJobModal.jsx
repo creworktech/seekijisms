@@ -599,12 +599,14 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 rounded-xl bg-[#005ea4] hover:bg-[#004278] text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#005ea4] hover:bg-[#004278] text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none"
               >
-                <span className="material-symbols-outlined text-base">save</span>
+                <span className={`material-symbols-outlined text-base ${loading ? 'animate-spin' : ''}`}>
+                  {loading ? 'sync' : 'save'}
+                </span>
                 <span>
                   {loading
-                    ? 'Registering...'
+                    ? 'Registering Work Order...'
                     : `Add Product (${productsList.length} ${productsList.length === 1 ? 'Item' : 'Items'})`}
                 </span>
               </button>

@@ -218,6 +218,22 @@ class JobController extends Controller
         ], 200);
     }
 
+    public function destroy(Request $request, Job $job): JsonResponse
+    {
+        if (! $request->user()?->hasRole('admin')) {
+            return response()->json([
+                'message' => 'Unauthorized. Only admins can delete work orders.',
+            ], 403);
+        }
+
+        $tokenNo = $job->token_no;
+        $job->delete();
+
+        return response()->json([
+            'message' => "Work Order #{$tokenNo} deleted successfully.",
+        ], 200);
+    }
+
     protected function getActionSuccessMessage(string $action, Job $job): string
     {
         return match ($action) {

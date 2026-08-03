@@ -3,6 +3,7 @@ import { Link, usePage, router } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import CreateJobModal from '../../Components/Jobs/CreateJobModal';
 import ShowCustomerDrawer from '../../Components/Customers/ShowCustomerDrawer';
+import EditCustomerModal from '../../Components/Customers/EditCustomerModal';
 import { formatCurrency } from '../../utils/formatters';
 
 export default function Dashboard({ stats, dashboardCustomers = [], recentJobs = [], sanctumToken }) {
@@ -13,6 +14,7 @@ export default function Dashboard({ stats, dashboardCustomers = [], recentJobs =
   const [selectedCustomerId, setSelectedCustomerId] = useState(dashboardCustomers[0]?.id || null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedCustomerDrawer, setSelectedCustomerDrawer] = useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
 
   const selectedCustomer = dashboardCustomers.find((c) => c.id === selectedCustomerId) || dashboardCustomers[0] || null;
 
@@ -183,10 +185,6 @@ export default function Dashboard({ stats, dashboardCustomers = [], recentJobs =
                         </p>
 
                         <div className="mt-2 space-y-1 text-xs text-[#64748b]">
-                          <div className="flex items-center gap-2 truncate">
-                            <span className="material-symbols-outlined text-sm text-[#94a3b8]">mail</span>
-                            <span className="truncate">{cust.email}</span>
-                          </div>
                           <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-sm text-[#94a3b8]">call</span>
                             <span className="font-mono text-[#334155]">{cust.mobile}</span>
@@ -322,6 +320,15 @@ export default function Dashboard({ stats, dashboardCustomers = [], recentJobs =
         sanctumToken={sanctumToken}
       />
 
+      {/* EDIT CUSTOMER MODAL */}
+      <EditCustomerModal
+        customer={editingCustomer}
+        isOpen={!!editingCustomer}
+        onClose={() => setEditingCustomer(null)}
+        onSuccess={() => router.reload()}
+        sanctumToken={sanctumToken}
+      />
+
       {/* SHOW / EDIT CUSTOMER DRAWER */}
       <ShowCustomerDrawer
         customer={selectedCustomerDrawer}
@@ -329,6 +336,10 @@ export default function Dashboard({ stats, dashboardCustomers = [], recentJobs =
         onClose={() => setSelectedCustomerDrawer(null)}
         sanctumToken={sanctumToken}
         hideMetrics={true}
+        onEdit={(cust) => {
+          setSelectedCustomerDrawer(null);
+          setEditingCustomer(cust);
+        }}
       />
     </AppLayout>
   );

@@ -103,4 +103,14 @@ class AuthAndPermissionsTest extends TestCase
         $response2 = $this->actingAs($this->admin)->patchJson("/api/v1/users/{$otherAdmin->id}/toggle-status");
         $response2->assertStatus(422);
     }
+
+    /** @test */
+    public function non_admin_cannot_access_accounts_module(): void
+    {
+        $response = $this->actingAs($this->coordinator)->get('/accounts');
+        $response->assertStatus(403);
+
+        $adminRes = $this->actingAs($this->admin)->get('/accounts');
+        $adminRes->assertStatus(200);
+    }
 }

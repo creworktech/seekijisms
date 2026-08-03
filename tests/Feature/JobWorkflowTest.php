@@ -273,4 +273,33 @@ class JobWorkflowTest extends TestCase
         $this->assertEquals(3, $response->json('count'));
         $this->assertCount(3, Job::where('customer_id', $this->customer->id)->get());
     }
+
+    /** @test */
+    public function only_admin_can_delete_work_orders(): void
+    {
+        $nonAdmin = User::factory()->create();
+        $nonAdmin->assignRole('intake_coordinator');
+
+        $job = Job::create([
+            'token_no' => 'SES9999',
+            'customer_id' => $this->customer->id,
+            'product_name' => 'Test Inverter',
+            'fault_description' => 'Test fault',
+            'stage' => 'new',
+            'priority' => 'medium',
+            'received_from' => 'self',
+            'in_date' => now()->toDateString(),
+            'created_by' => $this->admin->id,
+        ]);
+
+        $this->actingAs($nonAdmin)
+            ->deleteJson("/api/v1/jobs/{$job->id}")
+            ->assertStatus(403);
+
+        $this->actingAs($this->admin)
+            ->deleteJson("/api/v1/jobs/{$job->id}")
+            ->assertStatus(200);
+
+        $this->assertSoftDeleted('jobs', ['id' => $job->id]);
+    }
 }

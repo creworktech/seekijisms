@@ -21,6 +21,7 @@ class CustomerStoreRequest extends FormRequest
             'mobile' => ['required', 'digits:10', 'regex:/^[6-9]\d{9}$/', 'unique:customers,mobile'],
             'address' => ['required', 'string', 'max:500'],
             'registered_on' => ['nullable', 'date', 'before_or_equal:today'],
+            'is_active' => ['nullable', 'boolean'],
         ];
     }
 

@@ -84,6 +84,66 @@ class CustomerTest extends TestCase
 
         $response->assertStatus(201);
         $this->assertNotEmpty($response->json('data.customer_code'));
-        $this->assertStringStartsWith('ID', $response->json('data.customer_code'));
+        $this->assertStringStartsWith('C', $response->json('data.customer_code'));
+        $this->assertEquals('C00001', $response->json('data.customer_code'));
+        $this->assertFalse($response->json('data.is_active'));
+    }
+
+    /** @test */
+    public function only_admin_can_update_customer_details(): void
+    {
+        $customer = Customer::create([
+            'customer_code' => 'ID001',
+            'name' => 'Original Name',
+            'mobile' => '9876543210',
+            'address' => 'Original Address',
+            'registered_on' => now()->format('Y-m-d'),
+        ]);
+
+        $nonAdmin = User::factory()->create(['is_active' => true]);
+        $nonAdmin->assignRole('intake_coordinator');
+
+        // Non-admin update fails
+        $failRes = $this->actingAs($nonAdmin)->putJson("/api/v1/customers/{$customer->id}", [
+            'name' => 'Updated Name',
+        ]);
+        $failRes->assertStatus(403);
+
+        // Admin update succeeds
+        $successRes = $this->actingAs($this->admin)->putJson("/api/v1/customers/{$customer->id}", [
+            'name' => 'Updated Name By Admin',
+            'mobile' => '9876543210',
+            'address' => 'Updated Address',
+        ]);
+        $successRes->assertStatus(200);
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'name' => 'Updated Name By Admin',
+        ]);
+    }
+
+    /** @test */
+    public function only_admin_can_toggle_customer_status(): void
+    {
+        $customer = Customer::create([
+            'customer_code' => 'C00001',
+            'name' => 'Test Customer',
+            'mobile' => '9876543210',
+            'address' => 'Test Address',
+            'is_active' => false,
+            'registered_on' => now()->format('Y-m-d'),
+        ]);
+
+        $nonAdmin = User::factory()->create(['is_active' => true]);
+        $nonAdmin->assignRole('intake_coordinator');
+
+        // Non-admin toggle fails
+        $failRes = $this->actingAs($nonAdmin)->patchJson("/api/v1/customers/{$customer->id}/toggle-status");
+        $failRes->assertStatus(403);
+
+        // Admin toggle succeeds
+        $successRes = $this->actingAs($this->admin)->patchJson("/api/v1/customers/{$customer->id}/toggle-status");
+        $successRes->assertStatus(200);
+        $this->assertTrue($customer->fresh()->is_active);
     }
 }

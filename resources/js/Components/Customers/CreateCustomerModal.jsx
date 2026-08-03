@@ -220,9 +220,12 @@ export default function CreateCustomerModal({ isOpen, onClose, onSuccess, sanctu
               <button
                 type="submit"
                 disabled={loading}
-                className="sk-btn sk-btn-primary cursor-pointer disabled:opacity-50"
+                className="sk-btn sk-btn-primary cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none inline-flex items-center gap-2"
               >
-                {loading ? 'Registering...' : 'Create Customer'}
+                <span className={`material-symbols-outlined text-base ${loading ? 'animate-spin' : ''}`}>
+                  {loading ? 'sync' : 'person_add'}
+                </span>
+                <span>{loading ? 'Registering Customer...' : 'Create Customer'}</span>
               </button>
             </div>
 

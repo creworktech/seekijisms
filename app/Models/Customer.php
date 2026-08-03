@@ -12,6 +12,10 @@ class Customer extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $attributes = [
+        'is_active' => false,
+    ];
+
     protected $fillable = [
         'customer_code',
         'name',

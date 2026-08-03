@@ -12,7 +12,7 @@ class SettingsSeeder extends Seeder
         $defaults = [
             'inspection_fee' => '250',
             'token_prefix' => 'SES',
-            'customer_code_prefix' => 'ID',
+            'customer_code_prefix' => 'C',
             'business_name' => 'Seekoji Electric',
             'whatsapp_enabled' => '0',
         ];

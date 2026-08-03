@@ -6,11 +6,17 @@ import JobTransitionModal from '../../Components/Jobs/JobTransitionModal';
 import CreateJobModal from '../../Components/Jobs/CreateJobModal';
 import EditJobModal from '../../Components/Jobs/EditJobModal';
 import ShowCustomerDrawer from '../../Components/Customers/ShowCustomerDrawer';
+import EditCustomerModal from '../../Components/Customers/EditCustomerModal';
 import TestReportModal from '../../Components/Jobs/TestReportModal';
+import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
+import SearchableCustomerSelect from '../../Components/Common/SearchableCustomerSelect';
+import ConfirmActionModal from '../../Components/Common/ConfirmActionModal';
+import axios from 'axios';
+import { notifySuccess, notifyError } from '../../utils/toast';
 import { formatDate, STAGES, PRIORITIES, hasPermission } from '../../utils/formatters';
 import { exportToCSV, exportToPDF } from '../../utils/exportHelper';
 
-export default function AllJobs({ jobs, totalJobsCount, outcomeGroupCounts, testers = [], technicians = [], tokenPreview, filters, sanctumToken }) {
+export default function AllJobs({ jobs, customers = [], totalJobsCount, outcomeGroupCounts, testers = [], technicians = [], tokenPreview, filters, sanctumToken }) {
   const { auth } = usePage().props;
   const user = auth?.user;
   const isAdmin = user?.roles?.includes('admin');
@@ -22,13 +28,47 @@ export default function AllJobs({ jobs, totalJobsCount, outcomeGroupCounts, test
   const [printReportJob, setPrintReportJob] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editJob, setEditJob] = useState(null);
+  const [deleteModalData, setDeleteModalData] = useState(null);
+  const [deletingJob, setDeletingJob] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleConfirmDeleteJob = async () => {
+    if (!deleteModalData) return;
+    setDeletingJob(true);
+    try {
+      const headers = sanctumToken ? { Authorization: `Bearer ${sanctumToken}` } : {};
+      const res = await axios.delete(`/api/v1/jobs/${deleteModalData.id}`, { headers });
+      setDeletingJob(false);
+      setDeleteModalData(null);
+      notifySuccess(res.data?.message || 'Work Order deleted successfully');
+      router.reload();
+    } catch (err) {
+      setDeletingJob(false);
+      notifyError(err.response?.data?.message || 'Failed to delete work order.');
+    }
+  };
+
+  React.useEffect(() => {
+    const unbindStart = router.on('start', () => setIsNavigating(true));
+    const unbindFinish = router.on('finish', () => setIsNavigating(false));
+    return () => {
+      unbindStart();
+      unbindFinish();
+    };
+  }, []);
 
   const currentOutcomeGroup = filters?.outcome_group || '';
+  const selectedCustomerId = filters?.customer_id || '';
 
   const handleSearchChange = (val) => {
     setSearch(val);
     router.get('/jobs', { ...filters, search: val }, { preserveState: true });
+  };
+
+  const handleCustomerFilter = (custId) => {
+    router.get('/jobs', { ...filters, customer_id: custId }, { preserveState: true, preserveScroll: true });
   };
 
   const handleOutcomeGroupFilter = (group) => {
@@ -216,21 +256,33 @@ export default function AllJobs({ jobs, totalJobsCount, outcomeGroupCounts, test
         </div>
 
         {/* MAIN CARD */}
-        <div className="sk-card">
+        <div className="sk-card relative">
+          <TableLoadingOverlay loading={isNavigating} text="Fetching service jobs records..." />
 
           {/* TOOLBAR */}
           <div className="flex justify-between items-center p-4 border-b border-[#E5E5E5] flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[240px] max-w-[420px]">
-              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#717783] text-base pointer-events-none">
-                search
-              </span>
-              <input
-                type="text"
-                placeholder="Search jobs..."
-                value={search}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-11 pr-3 py-2 bg-[#f4f4f2] border border-[#E5E5E5] rounded-lg text-xs outline-none focus:border-[#005ea4]"
-              />
+            <div className="flex items-center gap-3 flex-1 min-w-[280px] max-w-[720px]">
+              <div className="relative flex-1 min-w-[200px]">
+                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#717783] text-base pointer-events-none">
+                  search
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search jobs by token, product, fault..."
+                  value={search}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="w-full pl-11 pr-3 py-2 bg-[#f4f4f2] border border-[#E5E5E5] rounded-lg text-xs outline-none focus:border-[#005ea4]"
+                />
+              </div>
+
+              <div className="w-64 shrink-0">
+                <SearchableCustomerSelect
+                  customers={customers}
+                  selectedCustomerId={selectedCustomerId}
+                  onSelectCustomer={handleCustomerFilter}
+                  placeholder="All Customers (Filter)"
+                />
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -381,28 +433,31 @@ export default function AllJobs({ jobs, totalJobsCount, outcomeGroupCounts, test
                         <td className="py-2.5 px-3 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => setPrintReportJob(j)}
-                              className="p-1 text-slate-500 hover:text-[#005ea4] transition-colors cursor-pointer"
-                              title="Print Test Report Sheet"
-                            >
-                              <span className="material-symbols-outlined text-base">print</span>
-                            </button>
-                            {canCreateJob && (
-                              <button
-                                onClick={() => setEditJob(j)}
-                                className="p-1 hover:text-[#005ea4] transition-colors cursor-pointer"
-                                title="Edit Intake Job"
-                              >
-                                <span className="material-symbols-outlined text-base">edit</span>
-                              </button>
-                            )}
-                            <button
                               onClick={() => setTimelineJob(j)}
                               className="p-1 hover:text-[#005ea4] transition-colors cursor-pointer"
                               title="View Timeline"
                             >
                               <span className="material-symbols-outlined text-base">schedule</span>
                             </button>
+                            {isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => setEditJob(j)}
+                                  className="p-1 hover:text-[#005ea4] transition-colors cursor-pointer"
+                                  title="Edit Product & Job Details"
+                                >
+                                  <span className="material-symbols-outlined text-base">edit</span>
+                                </button>
+                                <button
+                                  onClick={() => setDeleteModalData(j)}
+                                  className="p-1 text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="Delete Work Order"
+                                >
+                                  <span className="material-symbols-outlined text-base">delete</span>
+                                </button>
+                              </>
+                            )}
+
                           </div>
                         </td>
 
@@ -476,12 +531,25 @@ export default function AllJobs({ jobs, totalJobsCount, outcomeGroupCounts, test
           sanctumToken={sanctumToken}
         />
 
+        {/* EDIT CUSTOMER MODAL */}
+        <EditCustomerModal
+          customer={editingCustomer}
+          isOpen={!!editingCustomer}
+          onClose={() => setEditingCustomer(null)}
+          onSuccess={() => router.reload()}
+          sanctumToken={sanctumToken}
+        />
+
         {/* SHOW CUSTOMER DETAILS DRAWER */}
         <ShowCustomerDrawer
           customer={selectedCustomer}
           isOpen={!!selectedCustomer}
           onClose={() => setSelectedCustomer(null)}
           sanctumToken={sanctumToken}
+          onEdit={(cust) => {
+            setSelectedCustomer(null);
+            setEditingCustomer(cust);
+          }}
         />
 
         {/* PRINTABLE TEST REPORT SHEET MODAL */}
@@ -490,6 +558,21 @@ export default function AllJobs({ jobs, totalJobsCount, outcomeGroupCounts, test
           isOpen={!!printReportJob}
           onClose={() => setPrintReportJob(null)}
         />
+
+        {/* DELETE JOB CONFIRMATION MODAL */}
+        {deleteModalData && (
+          <ConfirmActionModal
+            isOpen={Boolean(deleteModalData)}
+            title="Delete Work Order"
+            description={`Are you sure you want to permanently delete Work Order #${deleteModalData.token_no} (${deleteModalData.product_name})? This action cannot be undone.`}
+            tokenNo={deleteModalData.token_no}
+            customerName={deleteModalData.customer?.name}
+            customerMobile={deleteModalData.customer?.mobile}
+            submitting={deletingJob}
+            onClose={() => setDeleteModalData(null)}
+            onConfirm={handleConfirmDeleteJob}
+          />
+        )}
 
       </div>
     </AppLayout>

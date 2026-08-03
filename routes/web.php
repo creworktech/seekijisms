@@ -30,12 +30,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/jobs', [WebController::class, 'storeJob'])->name('jobs.store');
     Route::put('/jobs/{job}', [WebController::class, 'updateJob'])->name('jobs.update');
     Route::get('/delivery', [WebController::class, 'delivery'])->name('delivery.index');
-    Route::get('/accounts', [WebController::class, 'accounts'])->name('accounts.index');
     Route::get('/reports', [WebController::class, 'reports'])->name('reports.index');
 
     // Admin Only Pages
     Route::middleware('can:users.manage')->group(function () {
+        Route::get('/accounts', [WebController::class, 'accounts'])->name('accounts.index');
         Route::get('/jcc', [WebController::class, 'jcc'])->name('jobs.jcc');
+        Route::delete('/jobs/{job}', [WebController::class, 'destroyJob'])->name('jobs.destroy');
         Route::post('/jobs/{job}/toggle-payment', [WebController::class, 'togglePayment'])->name('jobs.toggle-payment');
         Route::get('/users', [WebController::class, 'users'])->name('users.index');
         Route::get('/settings', [WebController::class, 'settings'])->name('settings.index');

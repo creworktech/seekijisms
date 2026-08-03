@@ -9,7 +9,7 @@ class CustomerUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->hasRole('admin') ?? false;
     }
 
     public function rules(): array
@@ -24,6 +24,7 @@ class CustomerUpdateRequest extends FormRequest
             ],
             'address' => ['sometimes', 'required', 'string', 'max:500'],
             'registered_on' => ['nullable', 'date', 'before_or_equal:today'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }

@@ -56,6 +56,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/jobs', [JobController::class, 'store'])->middleware('can:jobs.create');
         Route::get('/jobs/{job}', [JobController::class, 'show'])->middleware('can:jobs.view');
         Route::put('/jobs/{job}', [JobController::class, 'update'])->middleware('can:jobs.create');
+        Route::delete('/jobs/{job}', [JobController::class, 'destroy'])->middleware('can:users.manage');
         Route::get('/jobs/{job}/events', [JobController::class, 'events'])->middleware('can:jobs.view');
         Route::post('/jobs/{job}/transition', [JobController::class, 'transition'])->middleware('can:jobs.transition');
 

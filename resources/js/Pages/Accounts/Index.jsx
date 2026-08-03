@@ -4,6 +4,8 @@ import AppLayout from '../../Layouts/AppLayout';
 import { formatCurrency, formatDate, formatDateTime, STAGES, OUTCOMES } from '../../utils/formatters';
 import { exportToCSV, exportToPDF } from '../../utils/exportHelper';
 import { openWhatsApp } from '../../utils/WhatsAppHelper';
+import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
+import SearchableCustomerSelect from '../../Components/Common/SearchableCustomerSelect';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AccountsIndex({
@@ -22,6 +24,16 @@ export default function AccountsIndex({
   const [toDate, setToDate] = useState(filters?.to_date || '');
   const [unpaidOnly, setUnpaidOnly] = useState(Boolean(filters?.unpaid_only));
   const [isDuesModalOpen, setIsDuesModalOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  React.useEffect(() => {
+    const unbindStart = router.on('start', () => setIsNavigating(true));
+    const unbindFinish = router.on('finish', () => setIsNavigating(false));
+    return () => {
+      unbindStart();
+      unbindFinish();
+    };
+  }, []);
 
   const jobsData = transactions?.data || [];
   const meta = transactions?.meta || transactions;
@@ -126,18 +138,12 @@ export default function AccountsIndex({
               <span className="material-symbols-outlined text-base text-[#005ea4]">person</span>
               Customer Filter:
             </label>
-            <select
-              value={customerId}
-              onChange={(e) => handleGlobalCustomerChange(e.target.value)}
-              className="w-full py-2 px-3 bg-[#f9f9f7] border border-[#E5E5E5] rounded-xl text-xs font-semibold text-[#0B0B0B] outline-none focus:border-[#005ea4] cursor-pointer shadow-2xs"
-            >
-              <option value="">All Customers (All Work Orders)</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.customer_code} • {c.mobile})
-                </option>
-              ))}
-            </select>
+            <SearchableCustomerSelect
+              customers={customers}
+              selectedCustomerId={customerId}
+              onSelectCustomer={handleGlobalCustomerChange}
+              placeholder="All Customers (All Work Orders)"
+            />
           </div>
         </div>
 
@@ -345,7 +351,8 @@ export default function AccountsIndex({
         </div>
 
         {/* FINANCIAL TRANSACTIONS TABLE */}
-        <div className="bg-white border border-[#E5E5E5] rounded-2xl shadow-2xs overflow-hidden">
+        <div className="bg-white border border-[#E5E5E5] rounded-2xl shadow-2xs overflow-hidden relative">
+          <TableLoadingOverlay loading={isNavigating} text="Loading ledger transactions..." />
           
           <div className="p-4 border-b border-[#E5E5E5] bg-[#f9f9f7] flex justify-between items-center">
             <h3 className="font-bold text-xs uppercase tracking-wider text-[#0B0B0B] flex items-center gap-2">

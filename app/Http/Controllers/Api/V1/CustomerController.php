@@ -58,6 +58,7 @@ class CustomerController extends Controller
         $data['customer_code'] = $this->counterService->nextCustomerCode();
         $data['registered_on'] = $data['registered_on'] ?? Carbon::today()->format('Y-m-d');
         $data['created_by'] = $request->user()?->id;
+        $data['is_active'] = $request->boolean('is_active', false);
 
         $customer = Customer::create($data);
 
@@ -84,8 +85,12 @@ class CustomerController extends Controller
         ], 200);
     }
 
-    public function toggleStatus(Customer $customer): JsonResponse
+    public function toggleStatus(Request $request, Customer $customer): JsonResponse
     {
+        if (! $request->user()?->hasRole('admin')) {
+            return response()->json(['message' => 'Unauthorized. Only admins can toggle customer active status.'], 403);
+        }
+
         $customer->update(['is_active' => ! $customer->is_active]);
         $statusMsg = $customer->is_active ? 'Customer added to Dashboard.' : 'Customer removed from Dashboard.';
 

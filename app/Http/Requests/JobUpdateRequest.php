@@ -9,7 +9,7 @@ class JobUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('jobs.create') ?? false;
+        return $this->user()?->hasRole('admin') ?? false;
     }
 
     public function rules(): array

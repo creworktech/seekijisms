@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
+import EditUserModal from '../../Components/Users/EditUserModal';
+import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
 import axios from 'axios';
 import { formatDate } from '../../utils/formatters';
 import { notifySuccess, notifyError } from '../../utils/toast';
@@ -9,6 +11,7 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
   const currentUser = auth?.user;
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [safetyAlert, setSafetyAlert] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -19,6 +22,16 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  React.useEffect(() => {
+    const unbindStart = router.on('start', () => setIsNavigating(true));
+    const unbindFinish = router.on('finish', () => setIsNavigating(false));
+    return () => {
+      unbindStart();
+      unbindFinish();
+    };
+  }, []);
 
   const userList = users?.data || [];
 
@@ -121,7 +134,8 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
         </div>
 
         {/* CARD CONTAINER */}
-        <div className="sk-card">
+        <div className="sk-card relative">
+          <TableLoadingOverlay loading={isNavigating} text="Updating staff accounts..." />
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead className="bg-[#f4f4f2] text-[#666666] uppercase text-[10px] font-bold tracking-wider border-b border-[#E5E5E5]">
@@ -180,17 +194,24 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
                         {u.last_login_at ? formatDate(u.last_login_at) : 'Never'}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right space-x-2">
+                      <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                        <button
+                          onClick={() => setEditingUser(u)}
+                          className="p-1 text-slate-600 hover:text-[#005ea4] transition-colors cursor-pointer"
+                          title="Edit Staff Member Details & Role"
+                        >
+                          <span className="material-symbols-outlined text-lg">edit</span>
+                        </button>
                         <button
                           onClick={() => handleToggleStatus(u)}
-                          className="p-1 hover:text-[#005ea4] transition-colors"
+                          className="p-1 hover:text-[#005ea4] transition-colors cursor-pointer"
                           title="Toggle Active Status"
                         >
                           <span className="material-symbols-outlined text-lg">power_settings_new</span>
                         </button>
                         <button
                           onClick={() => handleDeleteUser(u)}
-                          className="p-1 hover:text-rose-600 transition-colors"
+                          className="p-1 hover:text-rose-600 transition-colors cursor-pointer"
                           title="Delete User"
                         >
                           <span className="material-symbols-outlined text-lg">delete</span>
@@ -303,13 +324,31 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
                   <button type="button" onClick={() => setIsCreateOpen(false)} className="sk-btn sk-btn-outline">
                     Cancel
                   </button>
-                  <button type="submit" disabled={loading} className="sk-btn sk-btn-primary">
-                    {loading ? 'Creating...' : 'Create Staff User'}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="sk-btn sk-btn-primary flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  >
+                    <span className={`material-symbols-outlined text-base ${loading ? 'animate-spin' : ''}`}>
+                      {loading ? 'sync' : 'person_add'}
+                    </span>
+                    <span>{loading ? 'Creating Staff User...' : 'Create Staff User'}</span>
                   </button>
                 </div>
               </form>
             </div>
           </div>
+        )}
+
+        {/* EDIT USER MODAL */}
+        {editingUser && (
+          <EditUserModal
+            isOpen={Boolean(editingUser)}
+            onClose={() => setEditingUser(null)}
+            onSuccess={() => router.reload()}
+            userToEdit={editingUser}
+            sanctumToken={sanctumToken}
+          />
         )}
 
       </div>

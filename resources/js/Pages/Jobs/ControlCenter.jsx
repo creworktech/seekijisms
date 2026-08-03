@@ -9,6 +9,8 @@ import { notifySuccess, notifyError } from '../../utils/toast';
 import axios from 'axios';
 import { formatCurrency, formatDate, formatDateTime, STAGES, PRIORITIES, OUTCOMES, hasPermission } from '../../utils/formatters';
 
+import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
+import SearchableCustomerSelect from '../../Components/Common/SearchableCustomerSelect';
 import TestReportModal from '../../Components/Jobs/TestReportModal';
 
 export default function ControlCenter({ jobs = [], customers = [], stageCounts = {}, testers = [], technicians = [], tokenPreview, filters, sanctumToken, auth }) {
@@ -19,6 +21,16 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
   const [search, setSearch] = useState(filters?.search || '');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editJob, setEditJob] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  useEffect(() => {
+    const unbindStart = router.on('start', () => setIsNavigating(true));
+    const unbindFinish = router.on('finish', () => setIsNavigating(false));
+    return () => {
+      unbindStart();
+      unbindFinish();
+    };
+  }, []);
 
   // Print Test Report Modal State
   const [printReportJob, setPrintReportJob] = useState(null);
@@ -296,7 +308,8 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
         </div>
 
         {/* SPLIT 2-PANE AREA (NO PAGE HORIZONTAL SCROLL) */}
-        <div className="flex-1 flex min-h-0 w-full overflow-hidden">
+        <div className="flex-1 flex min-h-0 w-full overflow-hidden relative">
+          <TableLoadingOverlay loading={isNavigating || submittingAction} text={submittingAction ? "Processing job transition..." : "Updating control center workflow..."} />
 
           {/* LEFT PANE: JOB LIST */}
           <div className="w-[380px] shrink-0 border-r border-[#E5E5E5] bg-white flex flex-col min-h-0">
@@ -324,18 +337,12 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
 
               {/* Customer Filter Dropdown */}
               <div>
-                <select
-                  value={selectedCustomerId}
-                  onChange={(e) => handleCustomerSelect(e.target.value)}
-                  className="w-full py-1.5 px-2.5 bg-white text-[#0B0B0B] border border-[#E5E5E5] rounded-xl text-xs font-semibold outline-none focus:border-[#005ea4] cursor-pointer shadow-2xs"
-                >
-                  <option value="">All Customers (All Works)</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.customer_code} • {c.mobile})
-                    </option>
-                  ))}
-                </select>
+                <SearchableCustomerSelect
+                  customers={customers}
+                  selectedCustomerId={selectedCustomerId}
+                  onSelectCustomer={handleCustomerSelect}
+                  placeholder="All Customers (All Works)"
+                />
               </div>
             </div>
 
@@ -405,11 +412,11 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                       </h3>
                     </div>
                     <div className="flex items-center gap-2">
-                      {hasPermission(user, 'jobs.create') && (
+                      {user?.roles?.includes('admin') && (
                         <button
                           onClick={() => setEditJob(selectedJob)}
-                          className="sk-btn sk-btn-outline"
-                          title="Edit Job Details"
+                          className="sk-btn sk-btn-outline cursor-pointer"
+                          title="Edit Product & Job Details"
                         >
                           <span className="material-symbols-outlined text-base">edit</span>
                           Edit Job

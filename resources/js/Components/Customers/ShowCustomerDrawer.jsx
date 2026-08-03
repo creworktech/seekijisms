@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { formatCurrency, formatDate, formatDateTime, STAGES } from '../../utils/formatters';
 
-export default function ShowCustomerDrawer({ customer, isOpen, onClose, sanctumToken, hideMetrics = false }) {
+export default function ShowCustomerDrawer({ customer, isOpen, onClose, sanctumToken, hideMetrics = false, onEdit, isAdmin: propIsAdmin }) {
+  const { auth } = usePage().props || {};
+  const isAdmin = propIsAdmin !== undefined ? propIsAdmin : (auth?.user?.roles?.includes('admin') ?? false);
+
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -129,14 +133,26 @@ export default function ShowCustomerDrawer({ customer, isOpen, onClose, sanctumT
         >
           {/* TOP INTEGRATED CUSTOMER HEADER WITH CLOSE BUTTON */}
           <div className="bg-[#F0F7FF] border-b border-[#D6E6FF] p-6 relative shrink-0">
-            {/* Close Button at top right */}
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[#64748b] hover:text-[#0f172a] hover:bg-white/80 transition-all cursor-pointer"
-              title="Close Drawer"
-            >
-              <span className="material-symbols-outlined text-2xl">close</span>
-            </button>
+            {/* Header Actions */}
+            <div className="absolute top-4 right-4 flex items-center gap-2">
+              {isAdmin && onEdit && (
+                <button
+                  onClick={() => onEdit(customer)}
+                  className="px-3 py-1 bg-white hover:bg-slate-50 text-[#005ea4] border border-[#005ea4]/20 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                  title="Edit Customer Details"
+                >
+                  <span className="material-symbols-outlined text-sm">edit</span>
+                  Edit
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-full text-[#64748b] hover:text-[#0f172a] hover:bg-white/80 transition-all cursor-pointer"
+                title="Close Drawer"
+              >
+                <span className="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
 
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6 pr-10">
               {/* Avatar Circle */}

@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('name', 120)->index();
             $table->string('mobile', 10)->unique();
             $table->text('address');
-            $table->boolean('is_active')->default(true)->index();
+            $table->boolean('is_active')->default(false)->index();
             $table->date('registered_on');
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
