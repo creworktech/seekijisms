@@ -234,6 +234,13 @@ class JobController extends Controller
         ], 200);
     }
 
+    public function tokenPreview(): JsonResponse
+    {
+        $info = $this->counterService->previewJobTokenInfo();
+
+        return response()->json($info, 200);
+    }
+
     protected function getActionSuccessMessage(string $action, Job $job): string
     {
         return match ($action) {

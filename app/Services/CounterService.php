@@ -59,6 +59,25 @@ class CounterService
         });
     }
 
+    public function previewJobTokenInfo(): array
+    {
+        $prefix = Setting::get('token_prefix', 'SES');
+        $tokenKey = 'job_token';
+
+        if (Job::withTrashed()->count() === 0) {
+            $nextVal = 1;
+        } else {
+            $row = DB::table('counters')->where('key', $tokenKey)->first();
+            $nextVal = (! $row || (int) $row->value <= 0) ? 1 : (int) $row->value + 1;
+        }
+
+        return [
+            'prefix' => $prefix,
+            'next_val' => $nextVal,
+            'next_token' => $prefix . $nextVal,
+        ];
+    }
+
     public function resetCounters(): void
     {
         DB::table('counters')->update(['value' => 0]);

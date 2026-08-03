@@ -53,6 +53,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/customers/{customer}/jobs', [CustomerController::class, 'jobs'])->middleware('can:jobs.view');
 
         // Jobs
+        Route::get('/jobs/token-preview', [JobController::class, 'tokenPreview']);
         Route::get('/jobs', [JobController::class, 'index'])->middleware('can:jobs.view');
         Route::post('/jobs', [JobController::class, 'store'])->middleware('can:jobs.create');
         Route::get('/jobs/{job}', [JobController::class, 'show'])->middleware('can:jobs.view');

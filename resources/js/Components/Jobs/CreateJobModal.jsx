@@ -35,13 +35,40 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
   const [errors, setErrors] = useState({});
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const [tokenInfo, setTokenInfo] = useState({ prefix: 'SES', next_val: 1 });
+  const [refreshingToken, setRefreshingToken] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const fetchTokenPreview = async () => {
+    setRefreshingToken(true);
+    try {
+      const headers = sanctumToken ? { Authorization: `Bearer ${sanctumToken}` } : {};
+      const res = await axios.get('/api/v1/jobs/token-preview', { headers });
+      if (res.data?.prefix && res.data?.next_val) {
+        setTokenInfo({
+          prefix: res.data.prefix,
+          next_val: Number(res.data.next_val),
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch token preview:', err);
+    } finally {
+      setRefreshingToken(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
       searchCustomers(customerSearch);
+      fetchTokenPreview();
     }
-  }, [isOpen, customerSearch]);
+  }, [isOpen]);
+
+  const getTokenForIndex = (index) => {
+    const startVal = tokenInfo.next_val || 1;
+    const prefix = tokenInfo.prefix || 'SES';
+    return `${prefix}${startVal + index}`;
+  };
 
   const searchCustomers = async (query = '') => {
     setSearchingCustomer(true);
@@ -178,7 +205,7 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-        
+
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -195,9 +222,28 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
                 <h3 className="font-bold text-lg text-[#0B0B0B]">
                   New Service Job Intake (Multi-Product)
                 </h3>
-                <p className="text-xs text-[#666666]">
-                  Token Start: <span className="sk-tok font-bold">#{tokenPreview || 'SES...'}</span> • Adding {productsList.length} {productsList.length === 1 ? 'Product' : 'Products'}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                  <p className="text-xs text-[#666666]">
+                    Adding {productsList.length} {productsList.length === 1 ? 'Product' : 'Products'}
+                  </p>
+                  <span className="text-gray-300">•</span>
+                  <span className="inline-flex items-center gap-1 font-mono text-xs font-bold text-[#005ea4] bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
+                    <span className="material-symbols-outlined text-xs">tag</span>
+                    Tokens: #{getTokenForIndex(0)}
+                    {productsList.length > 1 && ` to #${getTokenForIndex(productsList.length - 1)}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={fetchTokenPreview}
+                    disabled={refreshingToken}
+                    className="p-1 text-slate-400 hover:text-[#005ea4] transition-colors cursor-pointer"
+                    title="Sync Latest Token Counter"
+                  >
+                    <span className={`material-symbols-outlined text-sm ${refreshingToken ? 'animate-spin' : ''}`}>
+                      sync
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -208,7 +254,7 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
 
           {/* Form Content */}
           <form onSubmit={handleFormSubmit} className="p-6 overflow-y-auto space-y-6 flex-1 thin-sb text-xs bg-[#f9f9f7]">
-            
+
             {/* STEP 1: CUSTOMER SELECTION & INTAKE META */}
             <div className="bg-white p-5 rounded-2xl border border-[#E5E5E5] shadow-2xs space-y-4">
               <div className="flex justify-between items-center border-b border-[#E5E5E5] pb-3">
@@ -411,14 +457,27 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
                     className="bg-white rounded-2xl border border-[#E5E5E5] p-5 shadow-2xs space-y-4 relative group"
                   >
                     {/* Card Header */}
-                    <div className="flex justify-between items-center border-b border-[#E5E5E5] pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-[#005ea4] text-white flex items-center justify-center text-xs font-black">
-                          #{index + 1}
-                        </span>
-                        <span className="font-bold text-xs uppercase tracking-wider text-[#0B0B0B]">
-                          Product Entry #{index + 1}
-                        </span>
+                    <div className="flex justify-between items-center border-b border-[#E5E5E5] pb-2.5 flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-[#005ea4] text-white flex items-center justify-center text-xs font-black">
+                            #{index + 1}
+                          </span>
+                          <span className="font-bold text-xs uppercase tracking-wider text-[#0B0B0B]">
+                            Product Entry #{index + 1}
+                          </span>
+                        </div>
+
+                        {/* PRE-ASSIGNED TOKEN BADGE */}
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg">
+                          <span className="material-symbols-outlined text-sm text-amber-700">label</span>
+                          <span className="text-[11px] font-bold text-amber-900 font-mono">
+                            Token: #{getTokenForIndex(index)}
+                          </span>
+                          <span className="text-[10px] text-amber-700 font-medium hidden sm:inline">
+                            (Write on product tag)
+                          </span>
+                        </div>
                       </div>
 
                       {productsList.length > 1 && (
@@ -436,7 +495,7 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
 
                     {/* Fields Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      
+
                       {/* Left Column: Specs */}
                       <div className="space-y-3">
                         <div>
@@ -448,9 +507,8 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
                             placeholder="e.g. ABB ACS580 Drive, Submersible Pump..."
                             value={product.product_name}
                             onChange={(e) => handleProductChange(product.id, 'product_name', e.target.value)}
-                            className={`w-full py-2 px-3 bg-[#f9f9f7] border rounded-xl text-xs font-semibold text-[#0B0B0B] outline-none focus:border-[#005ea4] ${
-                              errors[nameErrKey] ? 'border-rose-500 bg-rose-50/30' : 'border-[#E5E5E5]'
-                            }`}
+                            className={`w-full py-2 px-3 bg-[#f9f9f7] border rounded-xl text-xs font-semibold text-[#0B0B0B] outline-none focus:border-[#005ea4] ${errors[nameErrKey] ? 'border-rose-500 bg-rose-50/30' : 'border-[#E5E5E5]'
+                              }`}
                           />
                           {errors[nameErrKey] && (
                             <p className="text-rose-600 text-[10px] font-bold mt-1">{errors[nameErrKey]}</p>
@@ -556,11 +614,10 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
                   type="button"
                   disabled={productsList.length >= 20}
                   onClick={handleAddProduct}
-                  className={`px-5 py-2.5 rounded-xl border-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                    productsList.length >= 20
+                  className={`px-5 py-2.5 rounded-xl border-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${productsList.length >= 20
                       ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
                       : 'border-[#005ea4] text-[#005ea4] bg-blue-50/50 hover:bg-[#005ea4] hover:text-white shadow-2xs'
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined text-base">add</span>
                   <span>+ Add More Products</span>

@@ -382,9 +382,12 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                       <h4 className="font-bold text-xs text-[#0B0B0B] truncate mt-0.5">
                         {job.product_name}
                       </h4>
-                      <div className="flex justify-between text-[11px] text-[#666666] mt-2">
-                        <span>{job.customer?.name || 'Walk-in Customer'}</span>
-                        <span>{formatDate(job.in_date || job.created_at)}</span>
+                      <div className="flex justify-between items-center text-[11px] text-[#666666] mt-2 gap-2">
+                        <span className="truncate max-w-[170px]" title={job.customer?.name}>
+                          {job.customer?.name || 'Walk-in Customer'}
+                          {job.customer?.customer_code ? ` (${job.customer.customer_code})` : ''}
+                        </span>
+                        <span className="shrink-0">{formatDate(job.in_date || job.created_at)}</span>
                       </div>
                     </div>
                   );
@@ -397,18 +400,26 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
             </div>
           </div>
 
-          {/* RIGHT PANE: JOB DETAIL VIEW */}
-          <div className="flex-1 bg-[#f9f9f7] overflow-y-auto p-6 space-y-6 thin-sb min-h-0">
+          {/* RIGHT WORKSPACE DETAILS */}
+          <div className="flex-1 bg-white border border-[#E5E5E5] rounded-2xl flex flex-col min-w-0 shadow-2xs overflow-hidden">
             {selectedJob ? (
-              <>
-                {/* CARD 1: MAIN DETAILS CARD */}
-                <div className="sk-card">
-                  {/* Card Head */}
-                  <div className="p-4 border-b border-[#E5E5E5] flex justify-between items-center flex-wrap gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl font-bold sk-tok">#{selectedJob.token_no}</span>
-                      <h3 className="text-lg font-bold text-[#0B0B0B]">
-                        {selectedJob.product_name}
+              <div className="flex-1 overflow-y-auto thin-sb flex flex-col">
+
+                {/* Workspace Header */}
+                <div className="p-4 border-b border-[#E5E5E5] bg-[#f9f9f7] space-y-3">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-xl font-black font-mono text-[#005ea4] tracking-tight shrink-0">
+                        #{selectedJob.token_no}
+                      </span>
+                      <h3 className=" font-normal text-[#0B0B0B] flex items-center gap-2 flex-wrap leading-none">
+                        {selectedJob.brand && (
+                          <span className="text-base">
+                            {selectedJob.brand}
+                          </span>
+                        )}
+                        {selectedJob.brand && <span className="text-gray-400 font-normal">-</span>}
+                        <span>{selectedJob.product_name}</span>
                       </h3>
                     </div>
                     <div className="flex items-center gap-2">
@@ -439,13 +450,31 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
 
                   {/* Fields Grid */}
                   <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-xs border-b border-[#E5E5E5]">
+                    {/* Customer Row */}
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">CUSTOMER</p>
                       <p className="font-bold text-[#0B0B0B] mt-0.5">{selectedJob.customer?.name || selectedJob.customer_name || '-'}</p>
                     </div>
                     <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">CUSTOMER ID</p>
+                      <p className="font-mono font-bold mt-0.5">{selectedJob.customer?.customer_code || '-'}</p>
+                    </div>
+                    <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">MOBILE</p>
                       <p className="font-mono text-[#0B0B0B] mt-0.5">{selectedJob.customer?.mobile || selectedJob.customer_mobile || '-'}</p>
+                    </div>
+
+                    {/* Horizontal Line Divider */}
+                    <div className="col-span-full border-t border-[#E5E5E5] my-1" />
+
+                    {/* Product Row */}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">PRODUCT NAME</p>
+                      <p className="font-bold text-[#0B0B0B] mt-0.5">{selectedJob.product_name || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">BRAND / MAKE</p>
+                      <p className="font-bold mt-0.5">{selectedJob.brand || '-'}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">SERIAL NUMBER</p>
@@ -499,7 +528,7 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
 
                   {/* Customer Reported Fault Box */}
                   {selectedJob.fault_description && (
-                    <div className="p-4">
+                    <div className="p-4 pt-0">
                       <div className="p-3.5 rounded-lg bg-[#f4f4f2] border border-[#E5E5E5] text-xs">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666] mb-1 flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">warning</span>
@@ -1131,7 +1160,7 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                     </div>
                   );
                 })()}
-              </>
+              </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center p-8 text-center text-[#666666] space-y-2">
                 <span className="material-symbols-outlined text-4xl text-[#94a3b8]">inbox</span>

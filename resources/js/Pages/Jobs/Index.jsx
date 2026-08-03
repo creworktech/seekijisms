@@ -146,18 +146,16 @@ export default function JobsIndex({ jobs, testers = [], technicians = [], tokenP
             <div className="flex bg-[#f4f4f2] p-1 rounded-lg border border-[#E5E5E5]">
               <button
                 onClick={() => setViewMode('jcc')}
-                className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1 transition-all ${
-                  viewMode === 'jcc' ? 'bg-white text-[#005ea4] shadow' : 'text-[#666666]'
-                }`}
+                className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1 transition-all ${viewMode === 'jcc' ? 'bg-white text-[#005ea4] shadow' : 'text-[#666666]'
+                  }`}
               >
                 <span className="material-symbols-outlined text-base">bolt</span>
                 Split JCC
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1 transition-all ${
-                  viewMode === 'table' ? 'bg-white text-[#005ea4] shadow' : 'text-[#666666]'
-                }`}
+                className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1 transition-all ${viewMode === 'table' ? 'bg-white text-[#005ea4] shadow' : 'text-[#666666]'
+                  }`}
               >
                 <span className="material-symbols-outlined text-base">format_list_bulleted</span>
                 Table View
@@ -181,7 +179,7 @@ export default function JobsIndex({ jobs, testers = [], technicians = [], tokenP
 
             {/* LEFT PANE: JOB LIST */}
             <div className="w-[360px] shrink-0 border-r border-[#E5E5E5] bg-white flex flex-col">
-              
+
               {/* Search Bar */}
               <div className="p-3 border-b border-[#E5E5E5] bg-[#f4f4f2] relative">
                 <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-[#717783] text-base pointer-events-none">
@@ -206,11 +204,10 @@ export default function JobsIndex({ jobs, testers = [], technicians = [], tokenP
                       <div
                         key={job.id}
                         onClick={() => setSelectedJob(job)}
-                        className={`p-4 cursor-pointer transition-colors ${
-                          isSelected
+                        className={`p-4 cursor-pointer transition-colors ${isSelected
                             ? 'bg-[#F0F7FF] border-l-4 border-[#005ea4] pl-3'
                             : 'bg-white hover:bg-[#f4f4f2]'
-                        }`}
+                          }`}
                       >
                         <div className="flex justify-between items-start mb-1">
                           <span className="sk-tok text-xs">#{job.token_no}</span>
@@ -256,10 +253,18 @@ export default function JobsIndex({ jobs, testers = [], technicians = [], tokenP
                   {/* MAIN JOB CARD */}
                   <div className="sk-card">
                     <div className="p-4 border-b border-[#E5E5E5] flex justify-between items-center flex-wrap gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl font-bold sk-tok">#{selectedJob.token_no}</span>
-                        <h3 className="text-lg font-bold text-[#0B0B0B]">
-                          {selectedJob.product_name} {selectedJob.brand ? `(${selectedJob.brand})` : ''}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-xl font-black font-mono text-[#005ea4] tracking-tight shrink-0">
+                          #{selectedJob.token_no}
+                        </span>
+                        <h3 className="text-lg font-bold text-[#0B0B0B] flex items-center gap-2 flex-wrap leading-none">
+                          {selectedJob.brand && (
+                            <span className="text-base font-extrabold text-[#005ea4]">
+                              {selectedJob.brand}
+                            </span>
+                          )}
+                          {selectedJob.brand && <span className="text-gray-400 font-normal">-</span>}
+                          <span>{selectedJob.product_name}</span>
                         </h3>
                       </div>
 
@@ -299,6 +304,10 @@ export default function JobsIndex({ jobs, testers = [], technicians = [], tokenP
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Receiving Mode</p>
                         <p className="font-bold uppercase text-[#0B0B0B] mt-0.5">{selectedJob.received_from || 'Self'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Brand / Make</p>
+                        <p className="font-bold text-[#005ea4] mt-0.5">{selectedJob.brand || '-'}</p>
                       </div>
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">Serial No</p>
