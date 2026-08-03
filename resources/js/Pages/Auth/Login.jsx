@@ -7,9 +7,9 @@ import seekojiLogo from '../../../../public/images/logo.png';
 
 export default function Login() {
   const { data, setData, post, processing, errors } = useForm({
-    email: 'admin@seekoji.com',
-    password: 'secret',
-    remember: true,
+    email: '',
+    password: '',
+    remember: false,
   });
 
   const handleSubmit = (e) => {
