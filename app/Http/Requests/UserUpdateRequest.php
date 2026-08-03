@@ -20,7 +20,7 @@ class UserUpdateRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'min:3', 'max:120'],
             'email' => ['sometimes', 'required', 'email', Rule::unique('users', 'email')->ignore($userId)],
             'phone' => ['nullable', 'digits:10'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'password' => ['nullable', 'string', 'min:6'],
             'role' => ['sometimes', 'required', 'in:admin,intake_coordinator,tester,technician'],
             'is_active' => ['nullable', 'boolean'],
         ];

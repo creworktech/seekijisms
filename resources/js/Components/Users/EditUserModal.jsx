@@ -164,26 +164,15 @@ export default function EditUserModal({ isOpen, onClose, onSuccess, userToEdit, 
               <span className="block text-[11px] font-bold uppercase text-[#005ea4]">
                 Change Password (Leave blank to keep current)
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <input
-                    type="password"
-                    placeholder="New password (min 8)"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#f4f4f2] border border-[#E5E5E5] rounded-lg text-xs outline-none focus:border-[#005ea4]"
-                  />
-                  {errors.password && <p className="text-rose-600 text-[11px] mt-0.5">{errors.password[0]}</p>}
-                </div>
-                <div>
-                  <input
-                    type="password"
-                    placeholder="Confirm new password"
-                    value={formData.password_confirmation}
-                    onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#f4f4f2] border border-[#E5E5E5] rounded-lg text-xs outline-none focus:border-[#005ea4]"
-                  />
-                </div>
+              <div>
+                <input
+                  type="password"
+                  placeholder="New password (min 6 characters)"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#f4f4f2] border border-[#E5E5E5] rounded-lg text-xs outline-none focus:border-[#005ea4]"
+                />
+                {errors.password && <p className="text-rose-600 text-[11px] mt-0.5">{errors.password[0]}</p>}
               </div>
             </div>
 

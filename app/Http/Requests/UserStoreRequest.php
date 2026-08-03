@@ -17,7 +17,7 @@ class UserStoreRequest extends FormRequest
             'name' => ['required', 'string', 'min:3', 'max:120'],
             'email' => ['required', 'email', 'unique:users,email'],
             'phone' => ['nullable', 'digits:10'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:6'],
             'role' => ['required', 'in:admin,intake_coordinator,tester,technician'],
             'is_active' => ['nullable', 'boolean'],
         ];
