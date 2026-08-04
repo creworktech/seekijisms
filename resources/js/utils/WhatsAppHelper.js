@@ -19,7 +19,7 @@ export const generateWhatsAppMessage = ({ type, customerName, tokenNo, mobile, e
       break;
 
     case 'fault_found':
-      message = `Hello ${customerName || 'Customer'}, inspection complete for job #${tokenNo}. Estimated Budget: ₹${extra.estimatedBudget || 0}. Please approve to begin repair.`;
+      message = `Hello ${customerName || 'Customer'}, inspection complete for job #${tokenNo}. Estimated Budget: ₹${extra.estimatedBudget ?? 0}. Please approve to begin repair.`;
       break;
 
     case 'approve':

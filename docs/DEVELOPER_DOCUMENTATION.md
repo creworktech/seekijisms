@@ -124,7 +124,7 @@ seekojisms/
 | `new` | `assign_tester` | `testing` | *None* | Assigns `tester_id`. Records note. |
 | `new` | `cancel` | `completed` | `cancelled` | Sets `payable_amount = 0`. Job terminated at intake. |
 | `testing` | `ok_no_fault` | `completed` | `ok_no_fault` | Sets `payable_amount = inspection_fee` (or 0). |
-| `testing` | `fault_found` | `approval` | *None* | Requires `estimated_budget > 0`. Stores `tester_findings`. |
+| `testing` | `fault_found` | `approval` | *None* | Requires `estimated_budget >= 0`. Stores `tester_findings`. |
 | `testing` | `not_repairable` | `completed` | `not_repairable` | Sets `payable_amount = inspection_fee`. |
 | `approval` | `approve` | `repair` | *None* | Requires `approved_amount` and `technician_id`. |
 | `approval` | `not_approved` | `completed` | `not_approved` | Sets `payable_amount = inspection_fee` (0 if waived). UI shows NO AMOUNT DUE. |

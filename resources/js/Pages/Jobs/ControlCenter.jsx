@@ -93,9 +93,9 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
       setActionInput({
         tester_id: (sortedTesters.find(t => !t.name.toLowerCase().includes('admin')) || sortedTesters[0])?.id || '',
         technician_id: (sortedTechnicians.find(t => !t.name.toLowerCase().includes('admin')) || sortedTechnicians[0])?.id || '',
-        estimated_budget: selectedJob.estimated_budget || '',
-        approved_amount: selectedJob.approved_amount || selectedJob.estimated_budget || '',
-        final_amount: selectedJob.final_amount || selectedJob.approved_amount || '',
+        estimated_budget: selectedJob.estimated_budget ?? '',
+        approved_amount: selectedJob.approved_amount ?? selectedJob.estimated_budget ?? '',
+        final_amount: selectedJob.final_amount ?? selectedJob.approved_amount ?? '',
         paid_amount: selectedJob.payable_amount !== null && selectedJob.payable_amount !== undefined && selectedJob.payable_amount !== '' ? selectedJob.payable_amount : (selectedJob.final_amount || ''),
         payment_mode: 'cash',
         delivery_mode: 'self',
@@ -149,7 +149,7 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
         return;
       }
     }
-    if (actionName === 'fault_found' && (!payload.estimated_budget || parseFloat(payload.estimated_budget) <= 0)) {
+    if (actionName === 'fault_found' && (payload.estimated_budget === '' || payload.estimated_budget === null || payload.estimated_budget === undefined || isNaN(parseFloat(payload.estimated_budget)) || parseFloat(payload.estimated_budget) < 0)) {
       setFormErrors({ estimated_budget: 'Please enter Estimated Repair Budget (₹) before submitting.' });
       return;
     }
@@ -496,7 +496,7 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">ESTIMATED BUDGET</p>
                         <p className="font-bold text-[#005ea4] font-mono mt-0.5">
-                          {formatCurrency(selectedJob.estimated_budget || 0)}
+                          {formatCurrency(selectedJob.estimated_budget ?? 0)}
                         </p>
                       </div>
                     )}
@@ -504,7 +504,7 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[#666666]">APPROVED BUDGET</p>
                         <p className="font-bold text-[#005ea4] font-mono mt-0.5">
-                          {formatCurrency(selectedJob.approved_amount || selectedJob.estimated_budget || 0)}
+                          {formatCurrency(selectedJob.approved_amount ?? selectedJob.estimated_budget ?? 0)}
                         </p>
                       </div>
                     )}
@@ -729,7 +729,7 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                         </div>
                         <div className="text-right">
                           <span className="text-xl font-bold font-mono text-[#0284c7]">
-                            {formatCurrency(selectedJob.estimated_budget || 0)}
+                            {formatCurrency(selectedJob.estimated_budget ?? 0)}
                           </span>
                         </div>
                       </div>

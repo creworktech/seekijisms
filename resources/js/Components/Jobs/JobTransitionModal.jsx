@@ -37,13 +37,13 @@ export default function JobTransitionModal({ job, action, isOpen, onClose, onSuc
     } else if (action === 'fault_found') {
       setFormData({ estimated_budget: '', tester_findings: '' });
     } else if (action === 'approve') {
-      setFormData({ approved_amount: job?.estimated_budget || '', technician_id: (sortedTechnicians.find(t => !t.name.toLowerCase().includes('admin')) || sortedTechnicians[0])?.id || '' });
+      setFormData({ approved_amount: job?.estimated_budget ?? '', technician_id: (sortedTechnicians.find(t => !t.name.toLowerCase().includes('admin')) || sortedTechnicians[0])?.id || '' });
     } else if (action === 'work_done') {
-      setFormData({ final_amount: job?.approved_amount || '' });
+      setFormData({ final_amount: job?.approved_amount ?? '' });
     } else if (action === 'mark_pending') {
       setFormData({ pend_reason: '' });
     } else if (action === 'collect_payment') {
-      setFormData({ payment_mode: 'cash', paid_amount: job?.payable_amount || '' });
+      setFormData({ payment_mode: 'cash', paid_amount: job?.payable_amount ?? '' });
     } else if (action === 'deliver') {
       setFormData({ delivery_mode: 'self', delivery_receiver: job?.customer?.name || '', delivery_ref: '' });
     } else if (action === 'ok_no_fault' || action === 'not_repairable' || action === 'cancel') {

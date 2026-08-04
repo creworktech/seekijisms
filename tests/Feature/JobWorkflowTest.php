@@ -105,6 +105,22 @@ class JobWorkflowTest extends TestCase
     }
 
     /** @test */
+    public function testing_to_approval_via_fault_found_with_zero_budget(): void
+    {
+        $job = $this->createJobInStage('testing');
+
+        $response = $this->actingAs($this->admin)->postJson("/api/v1/jobs/{$job->id}/transition", [
+            'action' => 'fault_found',
+            'estimated_budget' => 0,
+            'tester_findings' => 'Under warranty repair.',
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertEquals('approval', $response->json('data.stage'));
+        $this->assertEquals(0, $response->json('data.estimated_budget'));
+    }
+
+    /** @test */
     public function approval_to_repair_via_approve(): void
     {
         $job = $this->createJobInStage('approval');

@@ -63,7 +63,7 @@ class JobTransitionRequest extends FormRequest
                     }
                 },
             ],
-            'estimated_budget' => ['required_if:action,fault_found', 'nullable', 'numeric', 'min:1', 'max:9999999'],
+            'estimated_budget' => ['required_if:action,fault_found', 'nullable', 'numeric', 'min:0', 'max:9999999'],
             'approved_amount' => ['required_if:action,approve', 'nullable', 'numeric', 'min:0'],
             'final_amount' => ['required_if:action,work_done', 'nullable', 'numeric', 'min:0'],
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
