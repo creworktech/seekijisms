@@ -3,8 +3,11 @@
 namespace Tests\Feature\Logistics;
 
 use App\Models\Dispatch;
+use App\Models\DispatchEvent;
 use App\Models\DispatchPhoto;
 use App\Services\DispatchPhotoService;
+use App\Services\DispatchService;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -96,5 +99,107 @@ class DispatchPhotoStorageTest extends LogisticsTestCase
 
         Storage::disk('public')->assertMissing($photo->path);
         $this->assertStringNotContainsString('public', $photo->path);
+    }
+
+    // Cleanup when the database transaction that stored a photo rolls back.
+    //
+    // Photo upload happens inside DB::transaction(), and DB::transaction()
+    // has no way to undo an upload that already landed on disk. If something
+    // later in that same transaction throws, the row disappears but the file
+    // would stay behind — unless the service explicitly cleans it up.
+
+    public function test_a_rolled_back_creation_deletes_the_photo_it_had_already_uploaded(): void
+    {
+        Storage::fake('local');
+
+        // Fires from inside the transaction, after photos->storeMany() has
+        // already written files to disk but before the transaction commits
+        // — exactly the ordering the fix targets.
+        Event::listen('eloquent.creating: ' . DispatchEvent::class, function () {
+            throw new \RuntimeException('Simulated failure after photo upload, before commit.');
+        });
+
+        try {
+            app(DispatchService::class)->create(
+                $this->validDispatchPayload(),
+                $this->gumlaUser,
+            );
+            $this->fail('Expected the simulated exception to propagate.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Simulated failure after photo upload, before commit.', $e->getMessage());
+        }
+
+        // The transaction rolled back, so there is no dispatch and no
+        // DispatchPhoto row — but that alone wouldn't prove anything about
+        // the file. The real assertion is that storage is empty too.
+        $this->assertSame(0, Dispatch::count());
+        $this->assertSame(0, DispatchPhoto::count());
+        $this->assertEmpty(Storage::disk('local')->allFiles('dispatches'), 'An orphaned file was left on disk after the rollback.');
+    }
+
+    public function test_a_rolled_back_edit_deletes_only_the_newly_added_photo(): void
+    {
+        Storage::fake('local');
+
+        $dispatch = Dispatch::factory()->between($this->gumlaUser, $this->hubUser)->create();
+        $originalPhoto = DispatchPhoto::create([
+            'dispatch_id' => $dispatch->id,
+            'type' => DispatchPhoto::TYPE_BUS,
+            'path' => "dispatches/{$dispatch->id}/bus_preexisting.jpg",
+        ]);
+        Storage::disk('local')->put($originalPhoto->path, 'existing bus photo');
+
+        Event::listen('eloquent.creating: ' . DispatchEvent::class, function () {
+            throw new \RuntimeException('Simulated failure after photo upload, before commit.');
+        });
+
+        try {
+            app(DispatchService::class)->update($dispatch, $this->gumlaUser, [
+                'receiver_id' => $dispatch->receiver_id,
+                'from_stop_id' => $dispatch->from_stop_id,
+                'to_stop_id' => $dispatch->to_stop_id,
+                'item_description' => 'Edited during a failing transaction',
+                'quantity' => 2,
+                'bus_number' => 'JH01ZZ0000',
+                'bus_reach_time' => '10:00',
+                'bus_leave_time' => '16:00',
+                'bus_photos' => [$this->photo('new-bus.jpg')],
+            ]);
+            $this->fail('Expected the simulated exception to propagate.');
+        } catch (\RuntimeException) {
+            // expected
+        }
+
+        // The pre-existing photo is untouched...
+        Storage::disk('local')->assertExists($originalPhoto->path);
+        $this->assertSame(1, DispatchPhoto::count());
+
+        // ...but the one added during the failed edit did not survive as an
+        // orphan.
+        $this->assertCount(1, Storage::disk('local')->allFiles("dispatches/{$dispatch->id}"));
+    }
+
+    public function test_a_rolled_back_receipt_confirmation_deletes_the_receipt_photo(): void
+    {
+        Storage::fake('local');
+
+        $dispatch = Dispatch::factory()->between($this->gumlaUser, $this->hubUser)->create();
+
+        Event::listen('eloquent.creating: ' . DispatchEvent::class, function () {
+            throw new \RuntimeException('Simulated failure after photo upload, before commit.');
+        });
+
+        try {
+            app(DispatchService::class)->markReceived($dispatch, $this->hubUser, [
+                'receipt_photo' => $this->photo('receipt.jpg'),
+            ]);
+            $this->fail('Expected the simulated exception to propagate.');
+        } catch (\RuntimeException) {
+            // expected
+        }
+
+        $this->assertSame('pending', $dispatch->fresh()->status->value);
+        $this->assertSame(0, DispatchPhoto::count());
+        $this->assertEmpty(Storage::disk('local')->allFiles("dispatches/{$dispatch->id}"));
     }
 }

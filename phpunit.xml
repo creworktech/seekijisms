@@ -29,6 +29,17 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+
+        <!--
+          Tests must never be able to reach real object storage, no matter
+          what LOGISTICS_PHOTO_DISK is set to in .env for the running app.
+          Without this override, DispatchPhotoTest — which only fakes the
+          'local' disk — silently wrote real files to the live R2 bucket
+          whenever .env pointed the app at 'r2', leaking test images that
+          nothing ever cleaned up.
+        -->
+        <env name="LOGISTICS_PHOTO_DISK" value="local"/>
+
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

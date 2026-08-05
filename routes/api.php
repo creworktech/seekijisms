@@ -151,6 +151,7 @@ Route::prefix('v1/logistics')->name('logistics.')->group(function () {
 
             Route::get('/dispatches', [LogisticsAdminDispatchController::class, 'index'])->name('dispatches.index');
             Route::get('/dispatches/{dispatch}', [LogisticsAdminDispatchController::class, 'show'])->name('dispatches.show');
+            Route::delete('/dispatches/{dispatch}', [LogisticsAdminDispatchController::class, 'destroy'])->name('dispatches.destroy');
 
             Route::get('/users', [LogisticsAdminUserController::class, 'index'])->name('users.index');
             Route::post('/users', [LogisticsAdminUserController::class, 'store'])->name('users.store');

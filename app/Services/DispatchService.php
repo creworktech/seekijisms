@@ -36,8 +36,14 @@ class DispatchService
             return $replay;
         }
 
+        // Photos stored during the transaction below are tracked here so
+        // they can be cleaned up if anything after them fails — the upload
+        // to disk is a real side effect that DB::transaction() cannot roll
+        // back on its own.
+        $uploadedPhotos = [];
+
         try {
-            $dispatch = DB::transaction(function () use ($data, $sender, $clientUuid) {
+            $dispatch = DB::transaction(function () use ($data, $sender, $clientUuid, &$uploadedPhotos) {
                 $dispatch = Dispatch::create([
                     'reference_no' => $this->nextReference(),
                     'client_uuid' => $clientUuid,
@@ -57,8 +63,10 @@ class DispatchService
                     'dispatch_date' => $data['dispatch_date'] ?? now()->toDateString(),
                 ]);
 
-                $this->photos->storeMany($dispatch, $data['bus_photos'] ?? [], DispatchPhoto::TYPE_BUS);
-                $this->photos->storeMany($dispatch, $data['package_photos'] ?? [], DispatchPhoto::TYPE_PACKAGE);
+                $uploadedPhotos = [
+                    ...$this->photos->storeMany($dispatch, $data['bus_photos'] ?? [], DispatchPhoto::TYPE_BUS),
+                    ...$this->photos->storeMany($dispatch, $data['package_photos'] ?? [], DispatchPhoto::TYPE_PACKAGE),
+                ];
 
                 $this->recordEvent(
                     $dispatch,
@@ -72,11 +80,17 @@ class DispatchService
                 return $dispatch;
             });
         } catch (UniqueConstraintViolationException $e) {
+            $this->photos->deleteFiles($uploadedPhotos);
+
             // Two retries raced and the index rejected the loser. Whichever
             // one committed is the dispatch both callers should see.
             if ($clientUuid && $replay = $this->findByClientUuid($clientUuid)) {
                 return $replay;
             }
+
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->photos->deleteFiles($uploadedPhotos);
 
             throw $e;
         }
@@ -107,53 +121,64 @@ class DispatchService
      */
     public function update(Dispatch $dispatch, LogisticsUser $actor, array $data): Dispatch
     {
-        return DB::transaction(function () use ($dispatch, $actor, $data) {
-            /** @var Dispatch $locked */
-            $locked = Dispatch::query()->lockForUpdate()->findOrFail($dispatch->id);
+        $uploadedPhotos = [];
 
-            if (! $locked->isEditableBy($actor)) {
-                throw DispatchTransitionException::notEditable();
-            }
+        try {
+            return DB::transaction(function () use ($dispatch, $actor, $data, &$uploadedPhotos) {
+                /** @var Dispatch $locked */
+                $locked = Dispatch::query()->lockForUpdate()->findOrFail($dispatch->id);
 
-            $locked->fill(array_filter([
-                'receiver_id' => $data['receiver_id'] ?? null,
-                'from_stop_id' => $data['from_stop_id'] ?? null,
-                'to_stop_id' => $data['to_stop_id'] ?? null,
-                'item_description' => $data['item_description'] ?? null,
-                'quantity' => $data['quantity'] ?? null,
-                'bus_number' => isset($data['bus_number']) ? strtoupper((string) $data['bus_number']) : null,
-                'bus_reach_time' => $data['bus_reach_time'] ?? null,
-                'bus_leave_time' => $data['bus_leave_time'] ?? null,
-            ], static fn ($value) => $value !== null));
-
-            // Nullable fields are set separately so they can be cleared.
-            foreach (['driver_mobile', 'receiver_mobile', 'remarks'] as $nullable) {
-                if (array_key_exists($nullable, $data)) {
-                    $locked->{$nullable} = $data[$nullable];
+                if (! $locked->isEditableBy($actor)) {
+                    throw DispatchTransitionException::notEditable();
                 }
-            }
 
-            $locked->save();
+                $locked->fill(array_filter([
+                    'receiver_id' => $data['receiver_id'] ?? null,
+                    'from_stop_id' => $data['from_stop_id'] ?? null,
+                    'to_stop_id' => $data['to_stop_id'] ?? null,
+                    'item_description' => $data['item_description'] ?? null,
+                    'quantity' => $data['quantity'] ?? null,
+                    'bus_number' => isset($data['bus_number']) ? strtoupper((string) $data['bus_number']) : null,
+                    'bus_reach_time' => $data['bus_reach_time'] ?? null,
+                    'bus_leave_time' => $data['bus_leave_time'] ?? null,
+                ], static fn ($value) => $value !== null));
 
-            foreach ([DispatchPhoto::TYPE_BUS, DispatchPhoto::TYPE_PACKAGE] as $type) {
-                $key = $type . '_photos';
-
-                if (! empty($data[$key])) {
-                    $this->photos->storeMany($locked, $data[$key], $type);
+                // Nullable fields are set separately so they can be cleared.
+                foreach (['driver_mobile', 'receiver_mobile', 'remarks'] as $nullable) {
+                    if (array_key_exists($nullable, $data)) {
+                        $locked->{$nullable} = $data[$nullable];
+                    }
                 }
-            }
 
-            $this->recordEvent(
-                $locked,
-                $actor,
-                'updated',
-                DispatchStatus::PENDING,
-                DispatchStatus::PENDING,
-                "Dispatch details updated by {$actor->name}."
-            );
+                $locked->save();
 
-            return $locked->fresh($this->relations());
-        });
+                foreach ([DispatchPhoto::TYPE_BUS, DispatchPhoto::TYPE_PACKAGE] as $type) {
+                    $key = $type . '_photos';
+
+                    if (! empty($data[$key])) {
+                        $uploadedPhotos = [
+                            ...$uploadedPhotos,
+                            ...$this->photos->storeMany($locked, $data[$key], $type),
+                        ];
+                    }
+                }
+
+                $this->recordEvent(
+                    $locked,
+                    $actor,
+                    'updated',
+                    DispatchStatus::PENDING,
+                    DispatchStatus::PENDING,
+                    "Dispatch details updated by {$actor->name}."
+                );
+
+                return $locked->fresh($this->relations());
+            });
+        } catch (\Throwable $e) {
+            $this->photos->deleteFiles($uploadedPhotos);
+
+            throw $e;
+        }
     }
 
     /**
@@ -181,41 +206,49 @@ class DispatchService
         array $data,
         DispatchStatus $target
     ): Dispatch {
-        $updated = DB::transaction(function () use ($dispatch, $actor, $data, $target) {
-            /** @var Dispatch $locked */
-            $locked = Dispatch::query()->lockForUpdate()->findOrFail($dispatch->id);
+        $uploadedPhotos = [];
 
-            $this->assertMayConfirm($locked, $actor);
+        try {
+            $updated = DB::transaction(function () use ($dispatch, $actor, $data, $target, &$uploadedPhotos) {
+                /** @var Dispatch $locked */
+                $locked = Dispatch::query()->lockForUpdate()->findOrFail($dispatch->id);
 
-            if (! $locked->canTransitionTo($target)) {
-                throw DispatchTransitionException::alreadyFinalised($locked);
-            }
+                $this->assertMayConfirm($locked, $actor);
 
-            $from = $locked->status;
+                if (! $locked->canTransitionTo($target)) {
+                    throw DispatchTransitionException::alreadyFinalised($locked);
+                }
 
-            $locked->status = $target;
-            $locked->received_at = now();
-            $locked->received_by = $actor->id;
-            $locked->receipt_note = $data['note'] ?? null;
-            $locked->receipt_latitude = $data['latitude'] ?? null;
-            $locked->receipt_longitude = $data['longitude'] ?? null;
-            $locked->save();
+                $from = $locked->status;
 
-            if (! empty($data['receipt_photo'])) {
-                $this->photos->store($locked, $data['receipt_photo'], DispatchPhoto::TYPE_RECEIPT);
-            }
+                $locked->status = $target;
+                $locked->received_at = now();
+                $locked->received_by = $actor->id;
+                $locked->receipt_note = $data['note'] ?? null;
+                $locked->receipt_latitude = $data['latitude'] ?? null;
+                $locked->receipt_longitude = $data['longitude'] ?? null;
+                $locked->save();
 
-            $note = $target === DispatchStatus::RECEIVED
-                ? "{$actor->name} collected the package."
-                : "{$actor->name} could not collect the package: " . ($data['note'] ?? 'no reason given');
+                if (! empty($data['receipt_photo'])) {
+                    $uploadedPhotos[] = $this->photos->store($locked, $data['receipt_photo'], DispatchPhoto::TYPE_RECEIPT);
+                }
 
-            $this->recordEvent($locked, $actor, $target->value, $from, $target, $note, [
-                'latitude' => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
-            ]);
+                $note = $target === DispatchStatus::RECEIVED
+                    ? "{$actor->name} collected the package."
+                    : "{$actor->name} could not collect the package: " . ($data['note'] ?? 'no reason given');
 
-            return $locked;
-        });
+                $this->recordEvent($locked, $actor, $target->value, $from, $target, $note, [
+                    'latitude' => $data['latitude'] ?? null,
+                    'longitude' => $data['longitude'] ?? null,
+                ]);
+
+                return $locked;
+            });
+        } catch (\Throwable $e) {
+            $this->photos->deleteFiles($uploadedPhotos);
+
+            throw $e;
+        }
 
         SendDispatchNotification::dispatch(
             $updated,

@@ -11,6 +11,7 @@ import TestReportModal from '../../Components/Jobs/TestReportModal';
 import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
 import SearchableCustomerSelect from '../../Components/Common/SearchableCustomerSelect';
 import ConfirmActionModal from '../../Components/Common/ConfirmActionModal';
+import Pagination from '../../Components/Pagination';
 import axios from 'axios';
 import { notifySuccess, notifyError } from '../../utils/toast';
 import { formatDate, STAGES, PRIORITIES, hasPermission } from '../../utils/formatters';
@@ -476,32 +477,7 @@ export default function AllJobs({ jobs, customers = [], totalJobsCount, outcomeG
           </div>
 
           {/* FOOTER PAGINATION */}
-          <div className="flex justify-between items-center p-4 border-t border-[#E5E5E5] flex-wrap gap-3 text-xs text-[#666666]">
-            <span>Showing <b>{jobList.length}</b> of <b>{total}</b> jobs (30 per page)</span>
-            <div className="flex gap-1">
-              {pagination.prev ? (
-                <Link href={pagination.prev} className="w-8 h-8 rounded border border-[#E5E5E5] bg-white flex items-center justify-center font-bold text-[#0B0B0B]">
-                  &lsaquo;
-                </Link>
-              ) : (
-                <button disabled className="w-8 h-8 rounded border border-[#E5E5E5] bg-white opacity-40 cursor-not-allowed font-bold">
-                  &lsaquo;
-                </button>
-              )}
-              <button className="w-8 h-8 rounded border border-[#005ea4] bg-[#005ea4] text-white font-bold">
-                {pagination.current_page || 1}
-              </button>
-              {pagination.next ? (
-                <Link href={pagination.next} className="w-8 h-8 rounded border border-[#E5E5E5] bg-white flex items-center justify-center font-bold text-[#0B0B0B]">
-                  &rsaquo;
-                </Link>
-              ) : (
-                <button disabled className="w-8 h-8 rounded border border-[#E5E5E5] bg-white opacity-40 cursor-not-allowed font-bold">
-                  &rsaquo;
-                </button>
-              )}
-            </div>
-          </div>
+          <Pagination data={jobs} resourceName="jobs" />
 
         </div>
 

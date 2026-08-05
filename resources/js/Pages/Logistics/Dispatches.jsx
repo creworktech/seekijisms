@@ -1,15 +1,36 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
+import axios from 'axios';
 import AppLayout from '../../Layouts/AppLayout';
 import LogisticsTabs from '../../Components/Logistics/LogisticsTabs';
 import StatusPill from '../../Components/Logistics/StatusPill';
 import EmptyState from '../../Components/Logistics/EmptyState';
+import Modal from '../../Components/Logistics/Modal';
+import Pagination from '../../Components/Pagination';
+import { notifySuccess, notifyError } from '../../utils/toast';
 import { formatDate } from '../../utils/formatters';
-import { STATUS_FILTERS, formatTime } from '../../utils/logistics';
+import { STATUS_FILTERS, formatTime, LOGISTICS_API } from '../../utils/logistics';
 
 export default function Dispatches({ dispatches, locations, filters }) {
   const [search, setSearch] = useState(filters.search || '');
   const firstRender = useRef(true);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteDispatch = async () => {
+    setDeleting(true);
+
+    try {
+      await axios.delete(`${LOGISTICS_API}/dispatches/${confirmDelete.id}`);
+      notifySuccess(`${confirmDelete.reference_no} deleted.`);
+      setConfirmDelete(null);
+      router.reload({ only: ['dispatches'] });
+    } catch (err) {
+      notifyError(err.response?.data?.message || 'Could not delete the dispatch.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Every filter round-trips to the server so pagination stays correct.
   const applyFilters = (next) => {
@@ -113,11 +134,10 @@ export default function Dispatches({ dispatches, locations, filters }) {
                   key={s.value || 'all'}
                   type="button"
                   onClick={() => applyFilters({ status: s.value })}
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
-                    isActive
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${isActive
                       ? 'bg-[#005EA4] text-white'
                       : 'bg-[#f4f4f2] text-[#666666] hover:bg-[#E9E9E7]'
-                  }`}
+                    }`}
                 >
                   {s.label}
                 </button>
@@ -138,7 +158,7 @@ export default function Dispatches({ dispatches, locations, filters }) {
                 <table className="w-full min-w-[1120px] text-left text-xs">
                   <thead>
                     <tr className="border-b border-[#E5E5E5] bg-[#F9F9F7]">
-                      {['Reference No', 'Sender', 'Receiver', 'Route', 'Item', 'Bus No', 'In / Out', 'Date', 'Status', ''].map((h) => (
+                      {['Reference No', 'Sender', 'Receiver', 'Route', 'Item', 'Bus No', 'In / Out', 'Date', 'Status', 'Action'].map((h) => (
                         <th
                           key={h}
                           className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#666666]"
@@ -152,9 +172,8 @@ export default function Dispatches({ dispatches, locations, filters }) {
                     {rows.map((d) => (
                       <tr
                         key={d.id}
-                        className={`border-b border-[#F0F0F0] last:border-0 hover:bg-[#F9F9F7] ${
-                          d.status === 'not_received' ? 'border-l-[3px] border-l-[#D03B3B]' : ''
-                        }`}
+                        className={`border-b border-[#F0F0F0] last:border-0 hover:bg-[#F9F9F7] ${d.status === 'not_received' ? 'border-l-[3px] border-l-[#D03B3B]' : ''
+                          }`}
                       >
                         <td className="px-4 py-2.5">
                           <Link
@@ -191,13 +210,23 @@ export default function Dispatches({ dispatches, locations, filters }) {
                           <StatusPill status={d.status} />
                         </td>
                         <td className="px-4 py-2.5">
-                          <Link
-                            href={`/logistics/dispatches/${d.id}`}
-                            aria-label={`View ${d.reference_no}`}
-                            className="inline-flex rounded-md p-1 text-[#666666] transition-colors hover:bg-[#F0F7FF] hover:text-[#005EA4]"
-                          >
-                            <span className="material-symbols-outlined text-lg">visibility</span>
-                          </Link>
+                          <div className="flex items-center gap-1">
+                            <Link
+                              href={`/logistics/dispatches/${d.id}`}
+                              aria-label={`View ${d.reference_no}`}
+                              className="inline-flex rounded-md p-1 text-[#666666] transition-colors hover:bg-[#F0F7FF] hover:text-[#005EA4]"
+                            >
+                              <span className="material-symbols-outlined text-lg">visibility</span>
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDelete(d)}
+                              aria-label={`Delete ${d.reference_no}`}
+                              className="inline-flex rounded-md p-1 text-[#666666] transition-colors hover:bg-[#FFE6E6] hover:text-[#D03B3B] cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-lg">delete</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -205,33 +234,46 @@ export default function Dispatches({ dispatches, locations, filters }) {
                 </table>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E5E5] px-4 py-2.5">
-                <p className="text-[11px] text-[#666666]">
-                  Showing {meta.from || 0}–{meta.to || 0} of {meta.total || 0}
-                </p>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    disabled={!links.prev}
-                    onClick={() => links.prev && router.get(links.prev, {}, { preserveScroll: true })}
-                    className="rounded-md border border-[#E5E5E5] px-2.5 py-1 text-[11px] text-[#666666] transition-colors enabled:hover:bg-[#f4f4f2] disabled:opacity-40 enabled:cursor-pointer"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!links.next}
-                    onClick={() => links.next && router.get(links.next, {}, { preserveScroll: true })}
-                    className="rounded-md border border-[#E5E5E5] px-2.5 py-1 text-[11px] text-[#666666] transition-colors enabled:hover:bg-[#f4f4f2] disabled:opacity-40 enabled:cursor-pointer"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              <Pagination data={dispatches} resourceName="dispatches" />
             </>
           )}
         </div>
       </div>
+
+      <Modal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title={`Delete ${confirmDelete?.reference_no || ''}?`}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(null)}
+              className="rounded-md border border-[#E5E5E5] px-3 py-1.5 text-xs text-[#666666] cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={deleteDispatch}
+              className="rounded-md bg-[#D03B3B] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60 cursor-pointer"
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-xs text-[#666666]">
+          <strong className="text-[#0B0B0B]">{confirmDelete?.reference_no}</strong> (
+          {confirmDelete?.item_description}) will be removed from the list, and its bus and package photos will be
+          permanently deleted from storage.
+        </p>
+        <p className="mt-2 text-[11px] text-[#666666]">
+          The reference number and its event history are kept for the audit trail — only the record's visibility and
+          its photos are removed. This cannot be undone.
+        </p>
+      </Modal>
     </AppLayout>
   );
 }

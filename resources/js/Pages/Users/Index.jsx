@@ -4,6 +4,7 @@ import AppLayout from '../../Layouts/AppLayout';
 import EditUserModal from '../../Components/Users/EditUserModal';
 import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
 import ConfirmActionModal from '../../Components/Common/ConfirmActionModal';
+import Pagination from '../../Components/Pagination';
 import axios from 'axios';
 import { formatDate } from '../../utils/formatters';
 import { notifySuccess, notifyError } from '../../utils/toast';
@@ -239,32 +240,7 @@ export default function Users({ users, roles = [], sanctumToken, auth }) {
           </div>
 
           {/* FOOTER PAGINATION */}
-          <div className="flex justify-between items-center p-4 border-t border-[#E5E5E5] flex-wrap gap-3 text-xs text-[#666666]">
-            <span>Showing <b>{userList.length}</b> of <b>{users?.meta?.total || userList.length}</b> staff members (30 per page)</span>
-            <div className="flex gap-1">
-              {users?.links?.prev ? (
-                <Link href={users.links.prev} className="w-8 h-8 rounded border border-[#E5E5E5] bg-white flex items-center justify-center font-bold text-[#0B0B0B]">
-                  &lsaquo;
-                </Link>
-              ) : (
-                <button disabled className="w-8 h-8 rounded border border-[#E5E5E5] bg-white opacity-40 cursor-not-allowed font-bold">
-                  &lsaquo;
-                </button>
-              )}
-              <button className="w-8 h-8 rounded border border-[#005ea4] bg-[#005ea4] text-white font-bold">
-                {users?.meta?.current_page || 1}
-              </button>
-              {users?.links?.next ? (
-                <Link href={users.links.next} className="w-8 h-8 rounded border border-[#E5E5E5] bg-white flex items-center justify-center font-bold text-[#0B0B0B]">
-                  &rsaquo;
-                </Link>
-              ) : (
-                <button disabled className="w-8 h-8 rounded border border-[#E5E5E5] bg-white opacity-40 cursor-not-allowed font-bold">
-                  &rsaquo;
-                </button>
-              )}
-            </div>
-          </div>
+          <Pagination data={users} resourceName="staff members" />
         </div>
 
         {/* CREATE USER MODAL */}

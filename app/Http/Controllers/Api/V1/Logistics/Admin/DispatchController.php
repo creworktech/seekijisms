@@ -6,12 +6,19 @@ use App\Enums\DispatchStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Logistics\DispatchResource;
 use App\Models\Dispatch;
+use App\Services\DispatchPhotoService;
 use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class DispatchController extends Controller
 {
+    public function __construct(
+        private readonly DispatchPhotoService $photos,
+    ) {
+    }
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $dispatches = $this->filtered($request)
@@ -30,6 +37,24 @@ class DispatchController extends Controller
             'sender.location', 'receiver.location', 'receivedBy',
             'fromStop', 'toStop', 'photos', 'events.user',
         ]));
+    }
+
+    /**
+     * Soft-deletes the dispatch and permanently removes its photo files.
+     * The row itself is kept — reference numbers are never reused, and the
+     * dispatch_events audit trail stays intact for anything that still
+     * needs to explain what happened — but the photos are real files taking
+     * real storage, so they are actually deleted rather than left orphaned.
+     */
+    public function destroy(Dispatch $dispatch): JsonResponse
+    {
+        $dispatch->loadMissing('photos');
+        $reference = $dispatch->reference_no;
+
+        $this->photos->deleteAll($dispatch);
+        $dispatch->delete();
+
+        return response()->json(['message' => "Dispatch {$reference} deleted."]);
     }
 
     private function filtered(Request $request): Builder

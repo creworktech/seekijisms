@@ -3,10 +3,13 @@
 namespace Tests\Feature\Logistics;
 
 use App\Models\Dispatch;
+use App\Models\DispatchEvent;
+use App\Models\DispatchPhoto;
 use App\Models\Location;
 use App\Models\LogisticsUser;
 use App\Models\Stop;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Admin surface, plus locked decisions 1, 5, 10, 11 and 13:
@@ -550,6 +553,114 @@ class LogisticsAdminTest extends LogisticsAdminTestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.reference_no', 'OD1000');
+    }
+
+    // Deleting a dispatch
+
+    public function test_an_admin_can_delete_a_dispatch(): void
+    {
+        $dispatch = Dispatch::factory()->between($this->gumlaUser, $this->hubUser)->create();
+
+        $this->adminRequest()
+            ->deleteJson($this->adminUrl("dispatches/{$dispatch->id}"))
+            ->assertOk()
+            ->assertJsonFragment(['message' => "Dispatch {$dispatch->reference_no} deleted."]);
+
+        // Soft deleted: reference number and audit trail survive, but the
+        // record no longer appears in normal listings.
+        $this->assertSoftDeleted('dispatches', ['id' => $dispatch->id]);
+
+        $this->adminRequest()
+            ->getJson($this->adminUrl('dispatches'))
+            ->assertOk()
+            ->assertJsonMissing(['reference_no' => $dispatch->reference_no]);
+    }
+
+    public function test_deleting_a_dispatch_removes_its_photo_files_from_storage(): void
+    {
+        Storage::fake('local');
+
+        $this->actingAs($this->gumlaUser, 'logistics')
+            ->post($this->apiUrl('dispatches'), $this->validDispatchPayload())
+            ->assertCreated();
+
+        $this->forgetResolvedGuards();
+
+        $dispatch = Dispatch::firstOrFail();
+        $paths = $dispatch->photos->pluck('path')->all();
+        $this->assertNotEmpty($paths, 'The fixture is expected to attach at least one photo.');
+
+        foreach ($paths as $path) {
+            Storage::disk('local')->assertExists($path);
+        }
+
+        $this->adminRequest()
+            ->deleteJson($this->adminUrl("dispatches/{$dispatch->id}"))
+            ->assertOk();
+
+        foreach ($paths as $path) {
+            Storage::disk('local')->assertMissing($path);
+        }
+
+        // The photo rows themselves are gone too, not just the files —
+        // otherwise the API would keep listing links to files that no
+        // longer exist.
+        $this->assertSame(0, DispatchPhoto::where('dispatch_id', $dispatch->id)->count());
+    }
+
+    public function test_deleting_a_dispatch_keeps_its_event_history(): void
+    {
+        // Factory states set columns directly and skip DispatchService, so
+        // the event has to be created explicitly here.
+        $dispatch = Dispatch::factory()->between($this->gumlaUser, $this->hubUser)->received($this->hubUser)->create();
+
+        DispatchEvent::create([
+            'dispatch_id' => $dispatch->id,
+            'user_id' => $this->hubUser->id,
+            'action' => 'received',
+            'from_status' => 'pending',
+            'to_status' => 'received',
+            'note' => "{$this->hubUser->name} collected the package.",
+            'created_at' => now(),
+        ]);
+
+        $eventCount = DispatchEvent::where('dispatch_id', $dispatch->id)->count();
+        $this->assertGreaterThan(0, $eventCount);
+
+        $this->adminRequest()
+            ->deleteJson($this->adminUrl("dispatches/{$dispatch->id}"))
+            ->assertOk();
+
+        $this->assertSame($eventCount, DispatchEvent::where('dispatch_id', $dispatch->id)->count());
+    }
+
+    public function test_deleting_a_dispatch_does_not_free_its_reference_number(): void
+    {
+        $dispatch = Dispatch::factory()->between($this->gumlaUser, $this->hubUser)->create(['reference_no' => 'OD2500']);
+
+        $this->adminRequest()
+            ->deleteJson($this->adminUrl("dispatches/{$dispatch->id}"))
+            ->assertOk();
+
+        // The unique index still sees the soft-deleted row, so re-creating
+        // one with the same reference must fail exactly as it would for any
+        // other duplicate.
+        $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
+
+        Dispatch::factory()->between($this->gumlaUser, $this->hubUser)->create(['reference_no' => 'OD2500']);
+    }
+
+    public function test_a_non_admin_cannot_delete_a_dispatch(): void
+    {
+        $dispatch = Dispatch::factory()->between($this->gumlaUser, $this->hubUser)->create();
+
+        foreach ([$this->gumlaUser, $this->hubUser] as $user) {
+            $this->actingAs($user, 'logistics')
+                ->deleteJson($this->adminUrl("dispatches/{$dispatch->id}"))
+                ->assertForbidden();
+        }
+
+        $this->assertNotSoftDeleted('dispatches', ['id' => $dispatch->id]);
     }
 
     public function test_dashboard_stats_break_down_by_status_and_location(): void

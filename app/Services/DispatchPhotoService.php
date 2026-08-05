@@ -72,6 +72,72 @@ class DispatchPhotoService
     }
 
     /**
+     * Removes every photo a dispatch has — files on disk first, then the
+     * dispatch_photos rows. Deleting the dispatch itself is a soft delete
+     * (it stays for the audit trail and its reference number), but the
+     * files are real storage and real evidence: once the dispatch is gone
+     * there is nothing left for them to be evidence of, so they are removed
+     * for good rather than left behind as orphaned objects.
+     */
+    public function deleteAll(Dispatch $dispatch): void
+    {
+        $paths = $dispatch->photos
+            ->flatMap(fn (DispatchPhoto $photo) => array_filter([$photo->path, $photo->thumb_path]))
+            ->all();
+
+        if ($paths !== []) {
+            try {
+                self::disk()->delete($paths);
+            } catch (\Throwable $e) {
+                // A storage hiccup must not block the dispatch from being
+                // removed; log it so an orphaned file can be tracked down.
+                Log::warning('Could not delete dispatch photo files from storage', [
+                    'dispatch_id' => $dispatch->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $dispatch->photos()->delete();
+    }
+
+    /**
+     * Removes photo files from disk without touching the database.
+     *
+     * For cleaning up after a database transaction that stored these photos
+     * gets rolled back. The upload to R2 (or local disk) is a real HTTP/
+     * filesystem side effect that DB::transaction() has no power to undo, so
+     * a caller that stored photos inside a transaction and then hit an error
+     * later in that same transaction is left with orphaned files unless it
+     * cleans them up itself. The DispatchPhoto rows are gone once the
+     * transaction rolls back, which is why this takes the in-memory model
+     * instances returned by store()/storeMany() rather than querying for
+     * them — by the time this runs, there is nothing left in the database to
+     * query.
+     *
+     * @param  iterable<DispatchPhoto>  $photos
+     */
+    public function deleteFiles(iterable $photos): void
+    {
+        $paths = collect($photos)
+            ->flatMap(fn (DispatchPhoto $photo) => array_filter([$photo->path, $photo->thumb_path]))
+            ->all();
+
+        if ($paths === []) {
+            return;
+        }
+
+        try {
+            self::disk()->delete($paths);
+        } catch (\Throwable $e) {
+            Log::warning('Could not clean up orphaned dispatch photo files after a rolled-back transaction', [
+                'paths' => $paths,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * How many more photos of this type the dispatch will accept.
      */
     public function remainingSlots(Dispatch $dispatch, string $type): int
