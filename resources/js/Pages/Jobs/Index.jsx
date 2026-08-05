@@ -228,8 +228,8 @@ export default function JobsIndex({ jobs, testers = [], technicians = [], tokenP
                             </span>
                           </div>
                         </div>
-                        <h4 className="font-bold text-xs text-[#0B0B0B] truncate">
-                          {job.product_name}
+                        <h4 className="font-bold text-xs text-[#0B0B0B] truncate" title={job.brand ? `${job.brand} - ${job.product_name}` : job.product_name}>
+                          {job.brand ? `${job.brand} - ` : ''}{job.product_name}
                         </h4>
                         <div className="flex justify-between text-[11px] text-[#666666] mt-1">
                           <span>{job.customer?.name || 'Walk-in'}</span>

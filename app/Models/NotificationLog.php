@@ -13,6 +13,7 @@ class NotificationLog extends Model
     protected $fillable = [
         'job_id',
         'customer_id',
+        'dispatch_id',
         'template',
         'status',
         'wamid',
@@ -35,5 +36,10 @@ class NotificationLog extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function dispatch(): BelongsTo
+    {
+        return $this->belongsTo(Dispatch::class);
     }
 }

@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
         $middleware->statefulApi();
+
+        $middleware->alias([
+            'logistics.admin' => \App\Http\Middleware\EnsureLogisticsAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

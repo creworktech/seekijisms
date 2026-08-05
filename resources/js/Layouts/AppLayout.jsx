@@ -67,6 +67,7 @@ export default function AppLayout({ children, title = 'Dashboard', description =
     { label: 'Accounts', href: '/accounts', icon: 'account_balance_wallet', show: user?.roles?.includes('admin') },
     { label: 'Reports', href: '/reports', icon: 'analytics', show: hasPermission(user, 'reports.view') },
     { label: 'Users', href: '/users', icon: 'group_add', show: hasPermission(user, 'users.manage') },
+    { label: 'Logistics', href: '/logistics', icon: 'directions_bus', show: hasPermission(user, 'users.manage') },
     { label: 'Settings', href: '/settings', icon: 'settings', show: hasPermission(user, 'settings.manage') },
   ];
 
@@ -99,7 +100,7 @@ export default function AppLayout({ children, title = 'Dashboard', description =
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-2xl font-bold text-xs flex items-center gap-2.5 text-white ${
+            className={`fixed bottom-6 right-6 z-[200] px-5 py-3 rounded-xl shadow-2xl font-bold text-xs flex items-center gap-2.5 text-white ${
               toast.type === 'error'
                 ? 'bg-rose-600 border border-rose-400'
                 : 'bg-[#1a1c1b] border border-gray-700'

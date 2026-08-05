@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Web\LogisticsController;
 use App\Http\Controllers\Web\WebController;
 use Illuminate\Support\Facades\Route;
 
@@ -41,5 +42,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/jobs/{job}/toggle-payment', [WebController::class, 'togglePayment'])->name('jobs.toggle-payment');
         Route::get('/users', [WebController::class, 'users'])->name('users.index');
         Route::get('/settings', [WebController::class, 'settings'])->name('settings.index');
+
+        // Logistics admin panel. Read-only pages; every write goes through the
+        // /api/v1/logistics/admin endpoints, which enforce the business rules.
+        // Named `logistics.panel.*`, not `logistics.*` — the API already owns
+        // `logistics.dispatches.show`, and duplicate route names make route()
+        // resolve to whichever was registered last.
+        Route::prefix('logistics')->name('logistics.panel.')->group(function () {
+            Route::get('/', [LogisticsController::class, 'dashboard'])->name('dashboard');
+            Route::get('/dispatches', [LogisticsController::class, 'dispatches'])->name('dispatches');
+            Route::get('/dispatches/{dispatch}', [LogisticsController::class, 'dispatchDetail'])->name('dispatches.show');
+            Route::get('/users', [LogisticsController::class, 'users'])->name('users');
+            Route::get('/settings', [LogisticsController::class, 'settings'])->name('settings');
+        });
     });
 });

@@ -14,6 +14,13 @@ class DatabaseSeeder extends Seeder
             SettingsSeeder::class,
             CounterSeeder::class,
             DemoDataSeeder::class,
+
+            // Logistics module
+            LogisticsCounterSeeder::class,
+            LogisticsLocationSeeder::class,
+            LogisticsStopSeeder::class,
+            LogisticsUserSeeder::class,
+            LogisticsDemoSeeder::class,
         ]);
     }
 }

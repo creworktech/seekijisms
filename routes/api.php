@@ -8,6 +8,15 @@ use App\Http\Controllers\Api\V1\JobController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\Logistics\Admin\DashboardController as LogisticsAdminDashboardController;
+use App\Http\Controllers\Api\V1\Logistics\Admin\DispatchController as LogisticsAdminDispatchController;
+use App\Http\Controllers\Api\V1\Logistics\Admin\LocationController as LogisticsAdminLocationController;
+use App\Http\Controllers\Api\V1\Logistics\Admin\StopController as LogisticsAdminStopController;
+use App\Http\Controllers\Api\V1\Logistics\Admin\UserController as LogisticsAdminUserController;
+use App\Http\Controllers\Api\V1\Logistics\AuthController as LogisticsAuthController;
+use App\Http\Controllers\Api\V1\Logistics\BootstrapController;
+use App\Http\Controllers\Api\V1\Logistics\DispatchController as LogisticsDispatchController;
+use App\Http\Controllers\Api\V1\Logistics\PhotoController as LogisticsPhotoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -87,4 +96,79 @@ Route::prefix('v1')->group(function () {
         Route::put('/settings', [SettingController::class, 'update'])->middleware('can:settings.manage');
 
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Logistics API v1 — bus-parcel tracking between Ranchi and the spokes
+|--------------------------------------------------------------------------
+|
+| Authenticates on the separate `logistics` guard, so a Service Management
+| System token can never reach these routes and vice versa.
+|
+| Namespaced under /v1/logistics rather than bare /v1: the Service Management
+| API already owns /v1/auth/login, and Laravel matches the first registered
+| route, which would otherwise leave logistics login unreachable.
+|
+*/
+
+Route::prefix('v1/logistics')->name('logistics.')->group(function () {
+
+    Route::post('/auth/login', [LogisticsAuthController::class, 'login'])
+        ->middleware('throttle:5,1')
+        ->name('auth.login');
+
+    Route::middleware('auth:logistics')->group(function () {
+
+        // Auth
+        Route::post('/auth/logout', [LogisticsAuthController::class, 'logout'])->name('auth.logout');
+        Route::get('/auth/me', [LogisticsAuthController::class, 'me'])->name('auth.me');
+
+        // One call on app launch
+        Route::get('/bootstrap', BootstrapController::class)->name('bootstrap');
+
+        // Dispatches
+        Route::get('/dispatches/sent', [LogisticsDispatchController::class, 'sent'])->name('dispatches.sent');
+        Route::get('/dispatches/received', [LogisticsDispatchController::class, 'received'])->name('dispatches.received');
+        Route::post('/dispatches', [LogisticsDispatchController::class, 'store'])->name('dispatches.store');
+        Route::get('/dispatches/{dispatch}', [LogisticsDispatchController::class, 'show'])->name('dispatches.show');
+        Route::put('/dispatches/{dispatch}', [LogisticsDispatchController::class, 'update'])->name('dispatches.update');
+        Route::post('/dispatches/{dispatch}/receive', [LogisticsDispatchController::class, 'receive'])->name('dispatches.receive');
+    });
+
+    // Photos live outside the public directory. Either guard may view, and the
+    // controller decides whether this particular viewer is allowed.
+    Route::get('/photos/{photo}', [LogisticsPhotoController::class, 'show'])
+        ->middleware('auth:logistics,web')
+        ->name('photos.show');
+
+    // Admin surface: logistics admins by token, SMS web admins by session.
+    Route::prefix('admin')->name('admin.')
+        ->middleware(['auth:logistics,web', 'logistics.admin'])
+        ->group(function () {
+
+            Route::get('/dashboard/stats', [LogisticsAdminDashboardController::class, 'stats'])->name('dashboard.stats');
+
+            Route::get('/dispatches', [LogisticsAdminDispatchController::class, 'index'])->name('dispatches.index');
+            Route::get('/dispatches/{dispatch}', [LogisticsAdminDispatchController::class, 'show'])->name('dispatches.show');
+
+            Route::get('/users', [LogisticsAdminUserController::class, 'index'])->name('users.index');
+            Route::post('/users', [LogisticsAdminUserController::class, 'store'])->name('users.store');
+            Route::put('/users/{logisticsUser}', [LogisticsAdminUserController::class, 'update'])->name('users.update');
+            Route::patch('/users/{logisticsUser}/toggle-status', [LogisticsAdminUserController::class, 'toggleStatus'])->name('users.toggle');
+            Route::delete('/users/{logisticsUser}', [LogisticsAdminUserController::class, 'destroy'])->name('users.destroy');
+            Route::post('/users/{logisticsUser}/reset-password', [LogisticsAdminUserController::class, 'resetPassword'])->name('users.reset-password');
+
+            Route::get('/locations', [LogisticsAdminLocationController::class, 'index'])->name('locations.index');
+            Route::post('/locations', [LogisticsAdminLocationController::class, 'store'])->name('locations.store');
+            Route::put('/locations/{location}', [LogisticsAdminLocationController::class, 'update'])->name('locations.update');
+            Route::patch('/locations/{location}/toggle-status', [LogisticsAdminLocationController::class, 'toggleStatus'])->name('locations.toggle');
+            Route::delete('/locations/{location}', [LogisticsAdminLocationController::class, 'destroy'])->name('locations.destroy');
+            Route::get('/locations/{location}/stops', [LogisticsAdminLocationController::class, 'stops'])->name('locations.stops');
+
+            Route::post('/stops', [LogisticsAdminStopController::class, 'store'])->name('stops.store');
+            Route::put('/stops/{stop}', [LogisticsAdminStopController::class, 'update'])->name('stops.update');
+            Route::patch('/stops/{stop}/toggle-status', [LogisticsAdminStopController::class, 'toggleStatus'])->name('stops.toggle');
+            Route::delete('/stops/{stop}', [LogisticsAdminStopController::class, 'destroy'])->name('stops.destroy');
+        });
 });

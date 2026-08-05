@@ -22,7 +22,7 @@ class WhatsAppService
     /**
      * Dispatch WhatsApp template message via Meta Graph API and record in notification_logs.
      */
-    public function sendMessage(string $mobile, string $template, array $params = [], ?int $jobId = null, ?int $customerId = null): NotificationLog
+    public function sendMessage(string $mobile, string $template, array $params = [], ?int $jobId = null, ?int $customerId = null, ?int $dispatchId = null): NotificationLog
     {
         $formattedMobile = preg_replace('/[^0-9]/', '', $mobile);
         if (strlen($formattedMobile) === 10) {
@@ -32,6 +32,7 @@ class WhatsAppService
         $log = NotificationLog::create([
             'job_id' => $jobId,
             'customer_id' => $customerId,
+            'dispatch_id' => $dispatchId,
             'template' => $template,
             'status' => 'queued',
         ]);

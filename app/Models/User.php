@@ -13,6 +13,17 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles, SoftDeletes;
 
+    /**
+     * Pins permission lookups to the 'web' guard.
+     *
+     * Every permission is seeded with guard_name = 'web', but the Authenticate
+     * middleware makes whichever guard succeeded the default one. Since both
+     * 'web' and 'sanctum' resolve to this model, a request authenticated over
+     * 'sanctum' would otherwise have spatie look for 'sanctum' permissions
+     * that do not exist, and every ability check would fail with a 403.
+     */
+    protected string $guard_name = 'web';
+
     protected $fillable = [
         'name',
         'email',

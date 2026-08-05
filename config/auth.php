@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\LogisticsUser;
 use App\Models\User;
 
 return [
@@ -42,6 +43,24 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Declared explicitly on purpose. Sanctum auto-registers a `sanctum`
+        // guard with a null provider, and a null provider makes
+        // Guard::hasValidProvider() accept ANY tokenable model — so a
+        // logistics token would authenticate against the Service Management
+        // API. Naming the provider pins `auth:sanctum` to App\Models\User.
+        'sanctum' => [
+            'driver' => 'sanctum',
+            'provider' => 'users',
+        ],
+
+        // Logistics mobile app. Sanctum resolves the bearer token and rejects
+        // it unless the tokenable is a LogisticsUser, keeping the two identity
+        // systems from bleeding into each other.
+        'logistics' => [
+            'driver' => 'sanctum',
+            'provider' => 'logistics_users',
+        ],
     ],
 
     /*
@@ -65,6 +84,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'logistics_users' => [
+            'driver' => 'eloquent',
+            'model' => LogisticsUser::class,
         ],
 
         // 'users' => [

@@ -59,10 +59,17 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
 
   useEffect(() => {
     if (isOpen) {
-      searchCustomers(customerSearch);
       fetchTokenPreview();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(() => {
+      searchCustomers(customerSearch);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [customerSearch, isOpen]);
 
   const getTokenForIndex = (index) => {
     const startVal = tokenInfo.next_val || 1;
@@ -333,54 +340,66 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
                   )}
 
                   {/* Dropdown Options */}
-                  {(isSearchFocused || customerSearch.length > 0) && (
-                    <div className="absolute left-0 right-0 top-12 z-30 max-h-64 overflow-y-auto rounded-xl bg-white border border-[#E5E5E5] shadow-2xl divide-y divide-[#E5E5E5]">
-                      {searchingCustomer ? (
-                        <div className="p-3.5 text-center text-[#666666] text-xs font-medium flex items-center justify-center gap-2">
-                          <span className="material-symbols-outlined text-sm animate-spin text-[#005ea4]">sync</span>
-                          Searching customer database...
-                        </div>
-                      ) : customerOptions.length > 0 ? (
-                        customerOptions.map((cust) => (
-                          <div
-                            key={cust.id}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setSelectedCustomerObj(cust);
-                              setIsSearchFocused(false);
-                              setCustomerSearch('');
-                              setErrors({ ...errors, customer_id: null });
-                            }}
-                            className="p-3 hover:bg-[#F0F7FF] cursor-pointer flex items-center justify-between text-xs transition-colors"
-                          >
-                            <div>
-                              <span className="font-bold text-[#0B0B0B]">{cust.name}</span>
-                              <span className="text-[#666666] ml-2 font-mono">({cust.mobile})</span>
-                            </div>
-                            <span className="sk-tok font-mono">#{cust.customer_code}</span>
+                  {(isSearchFocused || customerSearch.length > 0) && (() => {
+                    const filteredCustomerOptions = customerOptions.filter((cust) => {
+                      if (!customerSearch.trim()) return true;
+                      const q = customerSearch.toLowerCase().trim();
+                      return (
+                        cust.name?.toLowerCase().includes(q) ||
+                        cust.mobile?.toLowerCase().includes(q) ||
+                        cust.customer_code?.toLowerCase().includes(q)
+                      );
+                    });
+
+                    return (
+                      <div className="absolute left-0 right-0 top-12 z-30 max-h-64 overflow-y-auto rounded-xl bg-white border border-[#E5E5E5] shadow-2xl divide-y divide-[#E5E5E5]">
+                        {searchingCustomer ? (
+                          <div className="p-3.5 text-center text-[#666666] text-xs font-medium flex items-center justify-center gap-2">
+                            <span className="material-symbols-outlined text-sm animate-spin text-[#005ea4]">sync</span>
+                            Searching customer database...
                           </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center space-y-2.5">
-                          <p className="text-xs text-[#666666]">
-                            No matching customer found {customerSearch ? `for "${customerSearch}"` : ''}.
-                          </p>
-                          <button
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setInitialCustomerName(customerSearch || '');
-                              setIsCreateCustomerOpen(true);
-                            }}
-                            className="px-4 py-2 bg-[#005ea4] hover:bg-[#004278] text-white font-bold rounded-xl text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                          >
-                            <span className="material-symbols-outlined text-base">person_add</span>
-                            <span>+ Create New Customer {customerSearch ? `"${customerSearch}"` : ''}</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        ) : filteredCustomerOptions.length > 0 ? (
+                          filteredCustomerOptions.map((cust) => (
+                            <div
+                              key={cust.id}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setSelectedCustomerObj(cust);
+                                setIsSearchFocused(false);
+                                setCustomerSearch('');
+                                setErrors({ ...errors, customer_id: null });
+                              }}
+                              className="p-3 hover:bg-[#F0F7FF] cursor-pointer flex items-center justify-between text-xs transition-colors"
+                            >
+                              <div>
+                                <span className="font-bold text-[#0B0B0B]">{cust.name}</span>
+                                <span className="text-[#666666] ml-2 font-mono">({cust.mobile})</span>
+                              </div>
+                              <span className="sk-tok font-mono">#{cust.customer_code}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center space-y-2.5">
+                            <p className="text-xs text-[#666666]">
+                              No matching customer found {customerSearch ? `for "${customerSearch}"` : ''}.
+                            </p>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setInitialCustomerName(customerSearch || '');
+                                setIsCreateCustomerOpen(true);
+                              }}
+                              className="px-4 py-2 bg-[#005ea4] hover:bg-[#004278] text-white font-bold rounded-xl text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            >
+                              <span className="material-symbols-outlined text-base">person_add</span>
+                              <span>+ Create New Customer {customerSearch ? `"${customerSearch}"` : ''}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
               {errors.customer_id && <p className="text-rose-600 text-xs font-bold mt-1">{errors.customer_id[0] || errors.customer_id}</p>}
