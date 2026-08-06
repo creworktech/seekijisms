@@ -284,8 +284,23 @@ class WebController extends Controller
         $prefix = Setting::get('token_prefix', 'SES');
         $previewToken = $prefix . '1, ' . $prefix . '2...';
 
-        $stageCountsRaw = DB::table('jobs')
-            ->whereNull('deleted_at')
+        // Same filters as the job list above (minus the stage itself), so
+        // the pipeline pill counts always match what a search would find in
+        // each stage rather than the stage's unfiltered total.
+        $stageCountsRaw = Job::query()
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($q) use ($search) {
+                    $q->where('token_no', 'like', "%{$search}%")
+                      ->orWhere('product_name', 'like', "%{$search}%")
+                      ->orWhere('brand', 'like', "%{$search}%")
+                      ->orWhere('serial_no', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function ($cq) use ($search) {
+                          $cq->where('name', 'like', "%{$search}%")
+                            ->orWhere('mobile', 'like', "%{$search}%")
+                            ->orWhere('customer_code', 'like', "%{$search}%");
+                      });
+                });
+            })
             ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
             ->selectRaw('stage, count(*) as count')
             ->groupBy('stage')

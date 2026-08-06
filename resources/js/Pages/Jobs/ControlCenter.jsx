@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, router } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import CreateJobModal from '../../Components/Jobs/CreateJobModal';
@@ -22,6 +22,12 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editJob, setEditJob] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const searchDebounceRef = useRef(null);
+  // Set right before a handler already issues its own immediate navigation
+  // that happens to also change `search` (e.g. picking a customer clears
+  // it) — stops the debounce effect below from firing a redundant, stale
+  // second request a moment later.
+  const skipNextSearchEffectRef = useRef(true);
 
   useEffect(() => {
     const unbindStart = router.on('start', () => setIsNavigating(true));
@@ -31,6 +37,21 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
       unbindFinish();
     };
   }, []);
+
+  // Debounced job search: typing fires one request 400ms after the user
+  // pauses, instead of one per keystroke — a per-keystroke request was
+  // triggering the loading overlay (and its fade) on every character typed.
+  useEffect(() => {
+    if (skipNextSearchEffectRef.current) {
+      skipNextSearchEffectRef.current = false;
+      return;
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      router.get('/jcc', { stage: activeStageKey, search, customer_id: selectedCustomerId }, { preserveState: true, preserveScroll: true });
+    }, 400);
+    return () => clearTimeout(searchDebounceRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   // Print Test Report Modal State
   const [printReportJob, setPrintReportJob] = useState(null);
@@ -112,19 +133,22 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
     setActiveStageKey(stageKey);
     setActionInput({});
     setFormErrors({});
+    clearTimeout(searchDebounceRef.current);
     router.get('/jcc', { stage: stageKey, search, customer_id: selectedCustomerId }, { preserveState: true, preserveScroll: true });
   };
 
   const handleCustomerSelect = (custId) => {
     setSelectedCustomerId(custId);
+    clearTimeout(searchDebounceRef.current);
+    skipNextSearchEffectRef.current = true;
+    setSearch('');
     setActionInput({});
     setFormErrors({});
-    router.get('/jcc', { stage: activeStageKey, search, customer_id: custId }, { preserveState: true, preserveScroll: true });
+    router.get('/jcc', { stage: activeStageKey, search: '', customer_id: custId }, { preserveState: true, preserveScroll: true });
   };
 
   const handleSearchChange = (val) => {
     setSearch(val);
-    router.get('/jcc', { stage: activeStageKey, search: val, customer_id: selectedCustomerId }, { preserveState: true });
   };
 
   const requestTransition = (actionName, payload = {}, title = '') => {
@@ -335,13 +359,15 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                 </span>
               </div>
 
-              {/* Customer Filter Dropdown */}
+              {/* Combined job search (token no, product, serial, customer) + customer filter */}
               <div>
                 <SearchableCustomerSelect
                   customers={customers}
                   selectedCustomerId={selectedCustomerId}
                   onSelectCustomer={handleCustomerSelect}
                   placeholder="All Customers (All Works)"
+                  query={search}
+                  onQueryChange={handleSearchChange}
                 />
               </div>
             </div>

@@ -6,24 +6,33 @@ export default function SearchableCustomerSelect({
   onSelectCustomer,
   placeholder = 'All Customers (All Works)',
   className = '',
+  // Optional combined mode: when provided, the same box also drives a
+  // free-text query (e.g. token number) that the caller sends to the
+  // server, instead of only filtering the customer dropdown locally.
+  query,
+  onQueryChange,
 }) {
+  const isCombined = onQueryChange !== undefined;
   const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [localQuery, setLocalQuery] = useState('');
+  const searchQuery = isCombined ? query : localQuery;
+  const setSearchQuery = isCombined ? onQueryChange : setLocalQuery;
   const containerRef = useRef(null);
 
   const selectedCustomer = customers.find((c) => String(c.id) === String(selectedCustomerId));
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside. In combined mode the query is a
+  // live job search, not a scratch value, so it must survive a blur.
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setIsOpen(false);
-        setSearchQuery('');
+        if (!isCombined) setSearchQuery('');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isCombined]);
 
   const filteredCustomers = customers.filter((c) => {
     if (!searchQuery.trim()) return true;
@@ -37,24 +46,54 @@ export default function SearchableCustomerSelect({
 
   const handleSelect = (id) => {
     onSelectCustomer(id);
-    setSearchQuery('');
+    // In combined mode, clearing the query is the caller's job — it must
+    // land in the same request as the customer change, not a second one,
+    // or a stale closure value can stomp the selection that just landed.
+    if (!isCombined) setSearchQuery('');
     setIsOpen(false);
   };
+
+  const hasClearable = selectedCustomerId || (isCombined && searchQuery);
+
+  // In combined mode the box is primarily a job search — a typed token
+  // number will usually match no customer at all. Don't let a "no customer
+  // found" panel sit on top of the job list implying the search failed;
+  // only show the suggestion panel when it actually has something to offer.
+  const showDropdown = isOpen && (!isCombined || !searchQuery.trim() || filteredCustomers.length > 0);
 
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
       {/* Search Input / Display Bar */}
       <div className="relative flex items-center">
         <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[#717783] text-base leading-none pointer-events-none">
-          person_search
+          {isCombined ? 'search' : 'person_search'}
         </span>
         <input
           type="text"
-          value={isOpen ? searchQuery : selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.customer_code} • ${selectedCustomer.mobile})` : ''}
-          placeholder={isOpen ? 'Search by Name, Mobile No, or Customer ID...' : placeholder}
+          value={
+            isCombined
+              // A typed query always wins; once it's empty, fall back to
+              // showing which customer is filtered (only while not
+              // editing, so focusing an empty box stays ready to type).
+              ? searchQuery || (!isOpen && selectedCustomer
+                ? `${selectedCustomer.name} (${selectedCustomer.customer_code} • ${selectedCustomer.mobile})`
+                : '')
+              : isOpen
+                ? searchQuery
+                : selectedCustomer
+                  ? `${selectedCustomer.name} (${selectedCustomer.customer_code} • ${selectedCustomer.mobile})`
+                  : ''
+          }
+          placeholder={
+            isCombined
+              ? 'Search by Token No, Product, Name, Mobile, or Customer ID...'
+              : isOpen
+                ? 'Search by Name, Mobile No, or Customer ID...'
+                : placeholder
+          }
           onFocus={() => {
             setIsOpen(true);
-            setSearchQuery('');
+            if (!isCombined) setSearchQuery('');
           }}
           onChange={(e) => {
             setSearchQuery(e.target.value);
@@ -62,7 +101,7 @@ export default function SearchableCustomerSelect({
           }}
           className="w-full pl-9 pr-9 py-1.5 bg-white text-[#0B0B0B] border border-[#E5E5E5] rounded-xl text-xs font-semibold outline-none focus:border-[#005ea4] cursor-pointer shadow-2xs truncate"
         />
-        {selectedCustomerId ? (
+        {hasClearable ? (
           <button
             type="button"
             onClick={(e) => {
@@ -70,7 +109,7 @@ export default function SearchableCustomerSelect({
               handleSelect('');
             }}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors cursor-pointer shrink-0 z-10"
-            title="Clear Customer Filter"
+            title={selectedCustomerId ? 'Clear Customer Filter' : 'Clear Search'}
           >
             <span className="material-symbols-outlined text-[13px] leading-none">close</span>
           </button>
@@ -82,7 +121,7 @@ export default function SearchableCustomerSelect({
       </div>
 
       {/* Dropdown Options List */}
-      {isOpen && (
+      {showDropdown && (
         <div className="absolute left-0 right-0 top-10 z-40 max-h-60 overflow-y-auto rounded-xl bg-white border border-[#E5E5E5] shadow-2xl divide-y divide-[#F0F0F0] text-xs thin-sb">
           {/* All Customers Option */}
           <div
@@ -131,7 +170,9 @@ export default function SearchableCustomerSelect({
             })
           ) : (
             <div className="p-4 text-center text-xs text-[#666666]">
-              No customer found matching "{searchQuery}"
+              {isCombined
+                ? `No customer matches "${searchQuery}" — job results are shown on the right.`
+                : `No customer found matching "${searchQuery}"`}
             </div>
           )}
         </div>
