@@ -7,15 +7,17 @@ import StatusPill from '../../Components/Logistics/StatusPill';
 import EmptyState from '../../Components/Logistics/EmptyState';
 import Modal from '../../Components/Logistics/Modal';
 import Pagination from '../../Components/Pagination';
+import CreateDispatchModal from '../../Components/Logistics/CreateDispatchModal';
 import { notifySuccess, notifyError } from '../../utils/toast';
 import { formatDate } from '../../utils/formatters';
 import { STATUS_FILTERS, formatTime, LOGISTICS_API } from '../../utils/logistics';
 
-export default function Dispatches({ dispatches, locations, filters }) {
+export default function Dispatches({ dispatches, locations, filters, logisticsUsers = [], stopsByLocation = {} }) {
   const [search, setSearch] = useState(filters.search || '');
   const firstRender = useRef(true);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const deleteDispatch = async () => {
     setDeleting(true);
@@ -67,6 +69,17 @@ export default function Dispatches({ dispatches, locations, filters }) {
       <LogisticsTabs active="/logistics/dispatches" />
 
       <div className="mx-auto max-w-[1400px] p-3 sm:p-6">
+        <div className="mb-3 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="flex items-center gap-1.5 rounded-md bg-[#005EA4] px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#004a85] cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-base">add</span>
+            New Dispatch
+          </button>
+        </div>
+
         <div className="mb-3 rounded-xl border border-[#E5E5E5] bg-white p-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div className="relative min-w-[200px] flex-1">
@@ -77,7 +90,7 @@ export default function Dispatches({ dispatches, locations, filters }) {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search reference, sender, receiver or bus number"
+                placeholder="Search reference, sender or receiver"
                 className="w-full rounded-md border border-[#E5E5E5] bg-[#f4f4f2] py-1.5 pl-9 pr-3 text-xs outline-none transition-all focus:border-[#005EA4] focus:ring-1 focus:ring-[#005EA4]"
               />
             </div>
@@ -158,7 +171,7 @@ export default function Dispatches({ dispatches, locations, filters }) {
                 <table className="w-full min-w-[1120px] text-left text-xs">
                   <thead>
                     <tr className="border-b border-[#E5E5E5] bg-[#F9F9F7]">
-                      {['Reference No', 'Sender', 'Receiver', 'Route', 'Item', 'Bus No', 'In / Out', 'Date', 'Status', 'Action'].map((h) => (
+                      {['Reference No', 'Sender', 'Receiver', 'Route', 'Qty', 'Bus In', 'Date', 'Status', 'Action'].map((h) => (
                         <th
                           key={h}
                           className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#666666]"
@@ -194,16 +207,10 @@ export default function Dispatches({ dispatches, locations, filters }) {
                         <td className="px-4 py-2.5 text-[#666666]">
                           {d.from_stop?.name} → {d.to_stop?.name}
                         </td>
-                        <td className="px-4 py-2.5 text-[#0B0B0B]">
-                          {d.item_description}
-                          <span className="ml-1 text-[10px] text-[#666666]">×{d.quantity}</span>
-                        </td>
-                        <td className="px-4 py-2.5 font-mono text-[#666666]">{d.bus_number}</td>
-                        {/* Bus in / out at the pickup stand. */}
+                        <td className="px-4 py-2.5 text-[#0B0B0B]">×{d.quantity}</td>
+                        {/* Bus arrival at the pickup stand. */}
                         <td className="px-4 py-2.5 whitespace-nowrap text-[#666666]">
                           {formatTime(d.bus_reach_time)}
-                          <span className="mx-1 text-[#C9C9C9]">/</span>
-                          {formatTime(d.bus_leave_time)}
                         </td>
                         <td className="px-4 py-2.5 text-[#666666]">{formatDate(d.dispatch_date)}</td>
                         <td className="px-4 py-2.5">
@@ -265,15 +272,22 @@ export default function Dispatches({ dispatches, locations, filters }) {
         }
       >
         <p className="text-xs text-[#666666]">
-          <strong className="text-[#0B0B0B]">{confirmDelete?.reference_no}</strong> (
-          {confirmDelete?.item_description}) will be removed from the list, and its bus and package photos will be
-          permanently deleted from storage.
+          <strong className="text-[#0B0B0B]">{confirmDelete?.reference_no}</strong> will be removed from the list,
+          and its bus and package photos will be permanently deleted from storage.
         </p>
         <p className="mt-2 text-[11px] text-[#666666]">
           The reference number and its event history are kept for the audit trail — only the record's visibility and
           its photos are removed. This cannot be undone.
         </p>
       </Modal>
+
+      <CreateDispatchModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={() => router.reload({ only: ['dispatches'] })}
+        logisticsUsers={logisticsUsers}
+        stopsByLocation={stopsByLocation}
+      />
     </AppLayout>
   );
 }

@@ -33,7 +33,11 @@ class JobWorkflow
             $rule = $currentRules[$action];
             $from = $job->stage;
 
-            $rule['apply']($job, $data);
+            // Passed by reference so a rule that needs to hand the note()
+            // callback something computed mid-apply (e.g. how much of a
+            // partial payment was actually collected once clamped to the
+            // due amount) can stash it in $data without a DB round trip.
+            $rule['apply']($job, $data, $actor);
             $job->save();
 
             $note = $rule['note']($job, $data);
@@ -61,6 +65,59 @@ class JobWorkflow
     public function allowedFor(Job $job): array
     {
         return array_keys($this->table()[$job->stage] ?? []);
+    }
+
+    /**
+     * Settling a remaining balance is deliberately not a stage transition —
+     * a customer paying off dues at Ready or even after Delivered shouldn't
+     * need to move the job anywhere, and CollectDuePaymentRequest already
+     * refuses this before it gets here if there's no due amount left.
+     */
+    public function collectDuePayment(Job $job, array $data, User $actor): Job
+    {
+        return DB::transaction(function () use ($job, $data, $actor) {
+            /** @var Job $job */
+            $job = Job::lockForUpdate()->find($job->id);
+
+            $due = $job->dueAmount() ?? 0.0;
+            $collected = max(0.0, round(min((float) $data['amount'], $due), 2));
+
+            $job->paid_amount = round((float) $job->paid_amount + $collected, 2);
+            $job->is_paid = (float) $job->payable_amount > 0 && $job->paid_amount >= (float) $job->payable_amount;
+            $job->payment_mode = $data['payment_mode'];
+            $job->paid_at = now();
+            $job->save();
+
+            $job->payments()->create([
+                'amount' => $collected,
+                'payment_mode' => $data['payment_mode'],
+                'remarks' => $data['remarks'] ?? null,
+                'collected_by' => $actor->id,
+                'collected_at' => now(),
+            ]);
+
+            $remaining = $job->dueAmount() ?? 0.0;
+            $note = $remaining > 0
+                ? "Collected ₹" . number_format($collected, 2) . " towards the outstanding due via {$data['payment_mode']}. ₹" . number_format($remaining, 2) . " still due."
+                : "Collected ₹" . number_format($collected, 2) . " via {$data['payment_mode']}. Outstanding balance fully settled.";
+
+            if (! empty($data['remarks'])) {
+                $note .= " (Remarks: {$data['remarks']})";
+            }
+
+            JobEvent::create([
+                'job_id' => $job->id,
+                'user_id' => $actor->id,
+                'action' => 'collect_due_payment',
+                'from_stage' => $job->stage,
+                'to_stage' => $job->stage,
+                'note' => $note,
+                'meta' => $data,
+                'created_at' => now(),
+            ]);
+
+            return $job->fresh(['customer', 'tester', 'technician', 'creator', 'events.user']);
+        });
     }
 
     protected function getInspectionFee(): float
@@ -276,30 +333,63 @@ class JobWorkflow
             'completed' => [
                 'collect_payment' => [
                     'to' => 'ready',
-                    'apply' => function (Job $job, array $data) {
+                    // Supports paying off only part of the bill: whatever is
+                    // sent is added to the running paid_amount rather than
+                    // replacing payable_amount (the bill itself never
+                    // changes here), and is clamped so a typo can't push the
+                    // job into negative-due, overpaid territory.
+                    'apply' => function (Job $job, array &$data, User $actor) {
                         $job->stage = 'ready';
-                        $job->is_paid = true;
+
+                        $due = max(0.0, round((float) $job->payable_amount - (float) $job->paid_amount, 2));
+                        $requested = isset($data['paid_amount']) && $data['paid_amount'] !== ''
+                            ? (float) $data['paid_amount']
+                            : $due;
+                        $collected = max(0.0, round(min($requested, $due), 2));
+
+                        $job->paid_amount = round((float) $job->paid_amount + $collected, 2);
+                        $job->is_paid = $job->paid_amount >= (float) $job->payable_amount;
                         $job->payment_mode = $data['payment_mode'];
-                        if (isset($data['paid_amount']) && $data['paid_amount'] !== '') {
-                            $job->payable_amount = (float) $data['paid_amount'];
-                        }
                         $job->paid_at = now();
+
+                        if ($collected > 0) {
+                            $job->payments()->create([
+                                'amount' => $collected,
+                                'payment_mode' => $data['payment_mode'],
+                                'remarks' => $data['remarks'] ?? null,
+                                'collected_by' => $actor->id,
+                                'collected_at' => now(),
+                            ]);
+                        }
+
+                        // Handed to note() below, computed here because by
+                        // the time note() runs job->paid_amount already
+                        // reflects the new total, not what changed just now.
+                        $data['_collected_now'] = $collected;
                     },
                     'note' => function (Job $job, array $data) {
-                        $amt = isset($data['paid_amount']) ? (float)$data['paid_amount'] : (float)$job->payable_amount;
+                        $collected = $data['_collected_now'] ?? 0.0;
+                        $remaining = $job->dueAmount() ?? 0.0;
                         $remarks = ! empty($data['remarks']) ? " (Remarks: {$data['remarks']})" : '';
-                        return "Collected payment of ₹" . number_format($amt, 2) . " via {$data['payment_mode']}{$remarks}.";
+
+                        return $remaining > 0
+                            ? "Collected ₹" . number_format($collected, 2) . " via {$data['payment_mode']}. ₹" . number_format($remaining, 2) . " still due{$remarks}."
+                            : "Collected final payment of ₹" . number_format($collected, 2) . " via {$data['payment_mode']}. Bill fully settled{$remarks}.";
                     },
                 ],
                 'release_unpaid' => [
                     'to' => 'ready',
                     'apply' => function (Job $job, array $data) {
                         $job->stage = 'ready';
-                        $job->is_paid = false;
+                        $job->is_paid = (float) $job->paid_amount >= (float) $job->payable_amount;
                     },
                     'note' => function (Job $job, array $data) {
+                        $due = $job->dueAmount() ?? 0.0;
                         $remarks = ! empty($data['remarks']) ? " (Remarks: {$data['remarks']})" : '';
-                        return "Released for delivery without payment settlement{$remarks}.";
+
+                        return $due > 0
+                            ? "Released for delivery with ₹" . number_format($due, 2) . " still due{$remarks}."
+                            : "Released for delivery without payment settlement{$remarks}.";
                     },
                 ],
             ],

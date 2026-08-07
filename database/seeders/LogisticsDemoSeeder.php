@@ -31,24 +31,23 @@ class LogisticsDemoSeeder extends Seeder
         }
 
         $rows = [
-            // sender,      receiver,   status,                       item
-            [$gumla,     $hubUser,   DispatchStatus::PENDING,      'Faulty ceiling fan motor'],
-            [$gumla,     $hubUser,   DispatchStatus::RECEIVED,     'Burnt stabiliser unit'],
-            [$lohardaga, $hubUser,    DispatchStatus::NOT_RECEIVED, 'Water pump control panel'],
-            [$hubUser,   $gumla,     DispatchStatus::PENDING,      'Repaired inverter board'],
-            [$hubUser,   $lohardaga, DispatchStatus::RECEIVED,     'Rewound submersible motor'],
+            // sender,      receiver,   status
+            [$gumla,     $hubUser,   DispatchStatus::PENDING],
+            [$gumla,     $hubUser,   DispatchStatus::RECEIVED],
+            [$lohardaga, $hubUser,    DispatchStatus::NOT_RECEIVED],
+            [$hubUser,   $gumla,     DispatchStatus::PENDING],
+            [$hubUser,   $lohardaga, DispatchStatus::RECEIVED],
         ];
 
-        foreach ($rows as [$sender, $receiver, $status, $item]) {
-            $this->makeDispatch($sender, $receiver, $status, $item);
+        foreach ($rows as [$sender, $receiver, $status]) {
+            $this->makeDispatch($sender, $receiver, $status);
         }
     }
 
     private function makeDispatch(
         LogisticsUser $sender,
         LogisticsUser $receiver,
-        DispatchStatus $status,
-        string $item
+        DispatchStatus $status
     ): void {
         $fromStop = Stop::where('location_id', $sender->location_id)->active()->first();
         $toStop = Stop::where('location_id', $receiver->location_id)->active()->first();
@@ -69,13 +68,9 @@ class LogisticsDemoSeeder extends Seeder
             'receiver_id' => $receiver->id,
             'from_stop_id' => $fromStop->id,
             'to_stop_id' => $toStop->id,
-            'item_description' => $item,
             'quantity' => rand(1, 3),
-            'bus_number' => 'JH01' . strtoupper(fake()->lexify('??')) . rand(1000, 9999),
             'driver_mobile' => '9' . rand(100000000, 999999999),
-            'receiver_mobile' => $receiver->mobile,
             'bus_reach_time' => '10:00',
-            'bus_leave_time' => '16:00',
             'status' => $status,
             'dispatch_date' => now()->subDays(rand(0, 6))->toDateString(),
             'received_at' => $status === DispatchStatus::PENDING ? null : now(),

@@ -32,14 +32,9 @@ class DispatchResource extends JsonResource
                 $this->relationLoaded('toStop') ? ($this->toStop?->name ?? '?') : '?'
             )),
 
-            'item_description' => $this->item_description,
             'quantity' => $this->quantity,
-            'bus_number' => $this->bus_number,
             'driver_mobile' => $this->driver_mobile,
-            'receiver_mobile' => $this->receiver_mobile,
             'bus_reach_time' => $this->formatTime($this->bus_reach_time),
-            'bus_leave_time' => $this->formatTime($this->bus_leave_time),
-            'remarks' => $this->remarks,
 
             'dispatch_date' => $this->dispatch_date?->toDateString(),
             'received_at' => $this->received_at?->toIso8601String(),

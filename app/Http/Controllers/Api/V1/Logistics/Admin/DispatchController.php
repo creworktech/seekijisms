@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api\V1\Logistics\Admin;
 
 use App\Enums\DispatchStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Logistics\Admin\DispatchAdminReceiveRequest;
+use App\Http\Requests\Logistics\Admin\DispatchAdminStoreRequest;
 use App\Http\Resources\Logistics\DispatchResource;
 use App\Models\Dispatch;
+use App\Models\LogisticsUser;
 use App\Services\DispatchPhotoService;
+use App\Services\DispatchService;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +20,54 @@ class DispatchController extends Controller
 {
     public function __construct(
         private readonly DispatchPhotoService $photos,
+        private readonly DispatchService $dispatches,
     ) {
+    }
+
+    /**
+     * The admin picks who the sender is — the acting user is an SMS admin,
+     * never a LogisticsUser, so it can't be threaded through as the sender
+     * the way the mobile create endpoint does.
+     */
+    public function store(DispatchAdminStoreRequest $request): JsonResponse
+    {
+        $sender = LogisticsUser::findOrFail($request->validated('sender_id'));
+
+        $data = $request->validated();
+        $data['bus_photos'] = $request->file('bus_photos', []);
+        $data['package_photos'] = $request->file('package_photos', []);
+
+        $dispatch = $this->dispatches->create($data, $sender);
+        $created = $dispatch->wasRecentlyCreated;
+
+        return (new DispatchResource($dispatch))
+            ->additional([
+                'message' => $created
+                    ? "Dispatch {$dispatch->reference_no} created."
+                    : "Dispatch {$dispatch->reference_no} was already submitted.",
+            ])
+            ->response()
+            ->setStatusCode($created ? 201 : 200);
+    }
+
+    /**
+     * Same reasoning as store(): the confirming party is whichever
+     * LogisticsUser the admin names, not the SMS admin themselves.
+     */
+    public function receive(DispatchAdminReceiveRequest $request, Dispatch $dispatch): JsonResponse
+    {
+        $actor = LogisticsUser::findOrFail($request->validated('acting_user_id'));
+
+        $data = $request->validated();
+        $data['receipt_photo'] = $request->file('receipt_photo');
+
+        $updated = $request->input('action') === DispatchStatus::RECEIVED->value
+            ? $this->dispatches->markReceived($dispatch, $actor, $data)
+            : $this->dispatches->markNotReceived($dispatch, $actor, $data);
+
+        return (new DispatchResource($updated))
+            ->additional(['message' => "Dispatch {$updated->reference_no} marked {$updated->status->label()}."])
+            ->response();
     }
 
     public function index(Request $request): AnonymousResourceCollection
@@ -82,8 +133,6 @@ class DispatchController extends Controller
 
                 $q->where(function ($sub) use ($term) {
                     $sub->where('reference_no', 'like', $term)
-                        ->orWhere('bus_number', 'like', $term)
-                        ->orWhere('item_description', 'like', $term)
                         ->orWhereHas('sender', fn ($s) => $s->where('name', 'like', $term))
                         ->orWhereHas('receiver', fn ($s) => $s->where('name', 'like', $term));
                 });

@@ -13,14 +13,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * A parcel handed to a bus conductor at one bus stand and collected at another.
  *
- * Both time columns describe the bus at the PICKUP stand, not the destination.
- * They are recorded by the sender while standing at from_stop:
- *
- *   bus_reach_time  the bus arrived at the pickup stand   ("in time")
- *   bus_leave_time  the bus departed the pickup stand     ("out time")
- *
- * The column names predate that clarification; everything user-facing says
- * In Time and Out Time.
+ * bus_reach_time is when the bus arrived at the pickup stand ("in time"),
+ * recorded by the sender while standing at from_stop.
  */
 class Dispatch extends Model
 {
@@ -33,14 +27,9 @@ class Dispatch extends Model
         'receiver_id',
         'from_stop_id',
         'to_stop_id',
-        'item_description',
         'quantity',
-        'bus_number',
         'driver_mobile',
-        'receiver_mobile',
         'bus_reach_time',
-        'bus_leave_time',
-        'remarks',
         'status',
         'received_at',
         'received_by',

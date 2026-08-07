@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Events\JobCreated;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CollectDuePaymentRequest;
 use App\Http\Requests\JobCreateRequest;
 use App\Http\Requests\JobStoreRequest;
 use App\Http\Requests\JobTransitionRequest;
@@ -215,6 +216,16 @@ class JobController extends Controller
         return response()->json([
             'data' => new JobResource($updatedJob),
             'message' => $userMessage,
+        ], 200);
+    }
+
+    public function collectDuePayment(CollectDuePaymentRequest $request, Job $job): JsonResponse
+    {
+        $updatedJob = $this->workflow->collectDuePayment($job, $request->validated(), $request->user());
+
+        return response()->json([
+            'data' => new JobResource($updatedJob),
+            'message' => "₹" . number_format((float) $request->validated('amount'), 2) . " collected for Job #{$updatedJob->token_no}.",
         ], 200);
     }
 

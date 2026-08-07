@@ -255,16 +255,13 @@ class DispatchTransitionTest extends LogisticsTestCase
                 'receiver_id' => $this->hubUser->id,
                 'from_stop_id' => $dispatch->from_stop_id,
                 'to_stop_id' => $dispatch->to_stop_id,
-                'item_description' => 'Corrected item description',
                 'quantity' => 5,
-                'bus_number' => 'jh01zz9999',
+                'driver_mobile' => '9876543210',
                 'bus_reach_time' => '11:30',
-                'bus_leave_time' => '17:45',
             ])
             ->assertOk()
-            ->assertJsonPath('data.item_description', 'Corrected item description')
             ->assertJsonPath('data.quantity', 5)
-            ->assertJsonPath('data.bus_number', 'JH01ZZ9999');
+            ->assertJsonPath('data.bus_reach_time', '11:30');
     }
 
     public function test_a_non_sender_cannot_edit_a_dispatch(): void
@@ -278,15 +275,12 @@ class DispatchTransitionTest extends LogisticsTestCase
                 'receiver_id' => $this->hubUser->id,
                 'from_stop_id' => $dispatch->from_stop_id,
                 'to_stop_id' => $dispatch->to_stop_id,
-                'item_description' => 'Receiver trying to edit',
-                'quantity' => 1,
-                'bus_number' => 'JH01AA0000',
+                'quantity' => 99,
                 'bus_reach_time' => '10:00',
-                'bus_leave_time' => '16:00',
             ])
             ->assertForbidden();
 
-        $this->assertNotSame('Receiver trying to edit', $dispatch->fresh()->item_description);
+        $this->assertNotSame(99, $dispatch->fresh()->quantity);
     }
 
     public function test_a_confirmed_dispatch_can_no_longer_be_edited(): void
@@ -301,11 +295,9 @@ class DispatchTransitionTest extends LogisticsTestCase
                 'receiver_id' => $this->hubUser->id,
                 'from_stop_id' => $dispatch->from_stop_id,
                 'to_stop_id' => $dispatch->to_stop_id,
-                'item_description' => 'Too late to change this',
                 'quantity' => 1,
-                'bus_number' => 'JH01AA0000',
+                'driver_mobile' => '9876543210',
                 'bus_reach_time' => '10:00',
-                'bus_leave_time' => '16:00',
             ])
             ->assertStatus(409);
     }

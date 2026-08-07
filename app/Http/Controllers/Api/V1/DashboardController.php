@@ -18,10 +18,11 @@ class DashboardController extends Controller
 
         $todayReceived = Job::whereDate('created_at', $today)->count();
 
-        $totalRevenue = (float) Job::where('is_paid', true)->sum('payable_amount');
-        $duesAmount = (float) Job::where('is_paid', false)
-            ->whereNotNull('payable_amount')
-            ->sum('payable_amount');
+        // paid_amount (not payable_amount gated on is_paid) so a partial
+        // payment is actually counted as revenue rather than invisible
+        // until the balance is fully settled.
+        $totalRevenue = (float) Job::sum('paid_amount');
+        $duesAmount = Job::sumOutstandingDue();
 
         $cancelledJobs = Job::where('outcome', 'cancelled')->count();
 

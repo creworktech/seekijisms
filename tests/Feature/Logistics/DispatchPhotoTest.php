@@ -162,11 +162,9 @@ class DispatchPhotoTest extends LogisticsTestCase
                 'receiver_id' => $this->hubUser->id,
                 'from_stop_id' => $this->gumlaStand->id,
                 'to_stop_id' => $this->khadgarha->id,
-                'item_description' => 'Trying to add a third bus photo',
                 'quantity' => 1,
-                'bus_number' => 'JH01AA1111',
+                'driver_mobile' => '9876543210',
                 'bus_reach_time' => '10:00',
-                'bus_leave_time' => '16:00',
                 'bus_photos' => [$this->photo('bus3.jpg')],
             ])
             ->assertStatus(422)

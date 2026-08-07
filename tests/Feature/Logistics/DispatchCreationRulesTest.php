@@ -166,8 +166,7 @@ class DispatchCreationRulesTest extends LogisticsTestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors([
                 'receiver_id', 'from_stop_id', 'to_stop_id',
-                'item_description', 'quantity', 'bus_number',
-                'bus_reach_time', 'bus_leave_time',
+                'quantity', 'driver_mobile', 'bus_reach_time',
                 'bus_photos', 'package_photos',
             ]);
     }

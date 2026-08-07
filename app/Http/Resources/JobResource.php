@@ -33,9 +33,22 @@ class JobResource extends JsonResource
             'approved_amount' => $this->approved_amount ? (float) $this->approved_amount : null,
             'final_amount' => $this->final_amount ? (float) $this->final_amount : null,
             'payable_amount' => $this->payable_amount !== null ? (float) $this->payable_amount : null,
+            'paid_amount' => (float) $this->paid_amount,
+            'due_amount' => $this->dueAmount(),
+            'payment_status' => $this->paymentStatus(),
             'is_paid' => (bool) $this->is_paid,
             'payment_mode' => $this->payment_mode,
             'paid_at' => $this->paid_at?->toIso8601String(),
+            'payments' => $this->relationLoaded('payments')
+                ? $this->payments->map(fn ($p) => [
+                    'id' => $p->id,
+                    'amount' => (float) $p->amount,
+                    'payment_mode' => $p->payment_mode,
+                    'remarks' => $p->remarks,
+                    'collected_by' => $p->relationLoaded('collector') ? $p->collector?->name : null,
+                    'collected_at' => $p->collected_at?->toIso8601String(),
+                ])->values()
+                : [],
             'pend_reason' => $this->pend_reason,
             'delivery_mode' => $this->delivery_mode,
             'delivery_receiver' => $this->delivery_receiver,

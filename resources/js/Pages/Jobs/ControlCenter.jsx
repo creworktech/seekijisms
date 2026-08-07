@@ -21,6 +21,10 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
   const [search, setSearch] = useState(filters?.search || '');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editJob, setEditJob] = useState(null);
+  const [duePaymentOpen, setDuePaymentOpen] = useState(false);
+  const [dueAmountInput, setDueAmountInput] = useState({ amount: '', payment_mode: 'cash', remarks: '' });
+  const [dueSubmitting, setDueSubmitting] = useState(false);
+  const [dueErrors, setDueErrors] = useState({});
   const [isNavigating, setIsNavigating] = useState(false);
   const searchDebounceRef = useRef(null);
   // Set right before a handler already issues its own immediate navigation
@@ -117,7 +121,9 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
         estimated_budget: selectedJob.estimated_budget ?? '',
         approved_amount: selectedJob.approved_amount ?? selectedJob.estimated_budget ?? '',
         final_amount: selectedJob.final_amount ?? selectedJob.approved_amount ?? '',
-        paid_amount: selectedJob.payable_amount !== null && selectedJob.payable_amount !== undefined && selectedJob.payable_amount !== '' ? selectedJob.payable_amount : (selectedJob.final_amount || ''),
+        paid_amount: selectedJob.due_amount !== null && selectedJob.due_amount !== undefined
+          ? selectedJob.due_amount
+          : (selectedJob.payable_amount ?? selectedJob.final_amount ?? ''),
         payment_mode: 'cash',
         delivery_mode: 'self',
         delivery_receiver: selectedJob.customer?.name || '',
@@ -253,6 +259,47 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
       notifyError(errMsg);
     }
   };
+
+  const submitDuePayment = async () => {
+    if (!selectedJob) return;
+
+    const amount = parseFloat(dueAmountInput.amount);
+    if (!dueAmountInput.amount || isNaN(amount) || amount <= 0) {
+      setDueErrors({ amount: 'Enter an amount greater than ₹0.' });
+      return;
+    }
+    if (amount > Number(selectedJob.due_amount || 0) + 0.01) {
+      setDueErrors({ amount: `Cannot exceed the ₹${Number(selectedJob.due_amount).toFixed(2)} due.` });
+      return;
+    }
+
+    setDueSubmitting(true);
+    try {
+      const headers = sanctumToken ? { Authorization: `Bearer ${sanctumToken}` } : {};
+      const res = await axios.post(
+        `/api/v1/jobs/${selectedJob.id}/collect-due-payment`,
+        { amount, payment_mode: dueAmountInput.payment_mode, remarks: dueAmountInput.remarks || undefined },
+        { headers }
+      );
+      notifySuccess(res.data?.message || 'Payment collected.');
+      setDuePaymentOpen(false);
+      router.reload({ preserveScroll: true });
+    } catch (err) {
+      if (err.response?.status === 422 && err.response?.data?.errors) {
+        setDueErrors(Object.fromEntries(Object.entries(err.response.data.errors).map(([k, v]) => [k, v[0]])));
+      }
+      notifyError(err.response?.data?.message || 'Could not collect payment.');
+    } finally {
+      setDueSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (duePaymentOpen && selectedJob) {
+      setDueAmountInput({ amount: String(selectedJob.due_amount ?? ''), payment_mode: 'cash', remarks: '' });
+      setDueErrors({});
+    }
+  }, [duePaymentOpen, selectedJob]);
 
   const selectedStageConfig = STAGES[activeStageKey] || STAGES.new;
 
@@ -542,10 +589,15 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                             <span className="material-symbols-outlined text-sm">do_not_disturb_on</span>
                             NO AMOUNT DUE (₹0)
                           </span>
-                        ) : selectedJob.is_paid ? (
+                        ) : selectedJob.payment_status === 'paid' ? (
                           <span className="font-bold text-[#10b981] mt-0.5 flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm">verified</span>
                             {formatCurrency(selectedJob.payable_amount || 0)} (PAID)
+                          </span>
+                        ) : selectedJob.payment_status === 'partial' ? (
+                          <span className="font-bold text-[#d97706] mt-0.5 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">pie_chart</span>
+                            {formatCurrency(selectedJob.paid_amount || 0)} paid · {formatCurrency(selectedJob.due_amount || 0)} due
                           </span>
                         ) : (
                           <span className="font-bold text-[#d97706] mt-0.5 flex items-center gap-1">
@@ -556,6 +608,28 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                       </div>
                     )}
                   </div>
+
+                  {/* Outstanding due, collectible from any stage — not just at
+                      the Completed step where full/partial payment is first
+                      requested. */}
+                  {Number(selectedJob.due_amount || 0) > 0 && (
+                    <div className="mx-4 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#fed7aa] bg-[#fff7ed] p-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-lg text-[#c2410c]">account_balance_wallet</span>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-[#c2410c]">Outstanding Due</p>
+                          <p className="font-mono text-sm font-black text-[#9a3412]">{formatCurrency(selectedJob.due_amount)}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDuePaymentOpen(true)}
+                        className="rounded-lg bg-[#c2410c] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#9a3412] cursor-pointer"
+                      >
+                        Collect Due Payment
+                      </button>
+                    </div>
+                  )}
 
                   {/* Customer Reported Fault Box */}
                   {selectedJob.fault_description && (
@@ -947,10 +1021,10 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-wider text-[#0369a1] flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm">payments</span>
-                            Final Bill Amount (Unpaid Dues)
+                            Final Bill Amount
                           </p>
                           <p className="text-[#0c4a6e] font-medium text-xs mt-0.5">
-                            Amount to collect based on completed repair work or applicable inspection fee.
+                            {formatCurrency(selectedJob.paid_amount || 0)} already collected · {formatCurrency(selectedJob.due_amount ?? selectedJob.payable_amount ?? 0)} due now
                           </p>
                         </div>
                         <div className="text-right">
@@ -974,13 +1048,23 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-[#0B0B0B] mb-1">Collected Amount (₹)</label>
+                          <label className="block text-xs font-bold text-[#0B0B0B] mb-1">
+                            Collected Amount (₹) <span className="text-[#64748b] font-normal">— can be less than the due</span>
+                          </label>
                           <input
                             type="number"
+                            max={selectedJob.due_amount ?? undefined}
                             value={actionInput.paid_amount}
                             onChange={(e) => setActionInput({ ...actionInput, paid_amount: e.target.value })}
                             className="w-full px-3 py-2 bg-white border border-[#E5E5E5] rounded-lg text-xs font-mono outline-none"
                           />
+                          {actionInput.paid_amount !== '' && !isNaN(parseFloat(actionInput.paid_amount)) && (
+                            <p className="mt-1 text-[11px] text-[#666666]">
+                              {Math.max(0, Number(selectedJob.due_amount ?? 0) - parseFloat(actionInput.paid_amount)) > 0
+                                ? `₹${Math.max(0, Number(selectedJob.due_amount ?? 0) - parseFloat(actionInput.paid_amount)).toFixed(2)} will remain due after this.`
+                                : 'This settles the bill in full.'}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-[#0B0B0B] mb-1">Payment Remarks (Optional)</label>
@@ -996,7 +1080,7 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
                       <div className="flex gap-2 flex-wrap pt-2">
                         <button
                           disabled={submittingAction}
-                          onClick={() => requestTransition('collect_payment', { payment_mode: actionInput.payment_mode, paid_amount: actionInput.paid_amount, remarks: actionInput.remarks }, 'Collect Payment & Settle Dues')}
+                          onClick={() => requestTransition('collect_payment', { payment_mode: actionInput.payment_mode, paid_amount: actionInput.paid_amount, remarks: actionInput.remarks }, 'Collect Payment & Release')}
                           className="sk-btn sk-btn-primary cursor-pointer"
                         >
                           Collect Payment & Release
@@ -1250,6 +1334,89 @@ export default function ControlCenter({ jobs = [], customers = [], stageCounts =
           isOpen={!!printReportJob}
           onClose={() => setPrintReportJob(null)}
         />
+
+        {/* COLLECT DUE PAYMENT MODAL — settles a remaining balance from any
+            stage, not just at the Completed step */}
+        {duePaymentOpen && selectedJob && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-2xl border border-[#E5E5E5] bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-3.5">
+                <h3 className="text-sm font-bold text-[#0B0B0B]">Collect Due Payment</h3>
+                <button
+                  onClick={() => setDuePaymentOpen(false)}
+                  className="rounded-md p-1 text-[#666666] hover:bg-[#f4f4f2] cursor-pointer"
+                  aria-label="Close"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+
+              <div className="space-y-3 p-5">
+                <p className="text-xs text-[#666666]">
+                  #{selectedJob.token_no} · <span className="font-bold text-[#9a3412]">{formatCurrency(selectedJob.due_amount || 0)} due</span>
+                </p>
+
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-[#0B0B0B]">Amount (₹) *</label>
+                  <input
+                    type="number"
+                    max={selectedJob.due_amount ?? undefined}
+                    value={dueAmountInput.amount}
+                    onChange={(e) => {
+                      setDueAmountInput((f) => ({ ...f, amount: e.target.value }));
+                      if (dueErrors.amount) setDueErrors((er) => ({ ...er, amount: null }));
+                    }}
+                    className={`w-full rounded-lg border px-3 py-2 text-xs font-mono outline-none ${
+                      dueErrors.amount ? 'border-rose-500 bg-rose-50' : 'border-[#E5E5E5]'
+                    }`}
+                  />
+                  {dueErrors.amount && <p className="mt-1 text-[11px] font-semibold text-rose-600">{dueErrors.amount}</p>}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-[#0B0B0B]">Payment Mode</label>
+                  <select
+                    value={dueAmountInput.payment_mode}
+                    onChange={(e) => setDueAmountInput((f) => ({ ...f, payment_mode: e.target.value }))}
+                    className="w-full rounded-lg border border-[#E5E5E5] px-3 py-2 text-xs outline-none"
+                  >
+                    <option value="cash">Cash Counter</option>
+                    <option value="upi">UPI / QR Code</option>
+                    <option value="bank">Bank Transfer</option>
+                    <option value="waived">Waived Off</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-[#0B0B0B]">Remarks (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Transaction Ref / Note"
+                    value={dueAmountInput.remarks}
+                    onChange={(e) => setDueAmountInput((f) => ({ ...f, remarks: e.target.value }))}
+                    className="w-full rounded-lg border border-[#E5E5E5] px-3 py-2 text-xs outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-[#E5E5E5] bg-[#F9F9F7] px-5 py-3">
+                <button
+                  onClick={() => setDuePaymentOpen(false)}
+                  className="rounded-md border border-[#E5E5E5] px-3 py-1.5 text-xs text-[#666666] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitDuePayment}
+                  disabled={dueSubmitting}
+                  className="rounded-md bg-[#c2410c] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-60 cursor-pointer"
+                >
+                  {dueSubmitting ? 'Collecting…' : 'Collect Payment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </AppLayout>

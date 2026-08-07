@@ -123,15 +123,17 @@ class SendDispatchNotification implements ShouldQueue
         $actor = $dispatch->receivedBy?->name ?? $dispatch->receiver?->name ?? 'The receiver';
 
         return match ($this->event) {
-            // "{1}, {2} has sent {3} to {4}. The bus left the pickup stand
-            //  at {5}." bus_leave_time is departure FROM the pickup stand,
-            //  which is what tells the receiver when to expect the bus.
+            // "{1}, {2} has sent {3} to {4}. The bus arrived at the pickup
+            //  stand at {5}." bus_leave_time (departure) was removed, so
+            //  this now reports bus_reach_time instead — the Meta template
+            //  text itself must be reworded to match in the WhatsApp
+            //  Business account.
             self::EVENT_CREATED => [
                 $recipientName,
                 $dispatch->sender?->name ?? 'a sender',
                 $dispatch->reference_no,
                 $dispatch->toStop?->name ?? 'the drop stop',
-                $this->formatTime($dispatch->bus_leave_time),
+                $this->formatTime($dispatch->bus_reach_time),
             ],
 
             self::EVENT_RECEIVED => [

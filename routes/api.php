@@ -70,6 +70,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/jobs/{job}', [JobController::class, 'destroy'])->middleware('can:users.manage');
         Route::get('/jobs/{job}/events', [JobController::class, 'events'])->middleware('can:jobs.view');
         Route::post('/jobs/{job}/transition', [JobController::class, 'transition'])->middleware('can:jobs.transition');
+        Route::post('/jobs/{job}/collect-due-payment', [JobController::class, 'collectDuePayment'])->middleware('can:jobs.transition');
 
         // Delivery
         Route::get('/delivery', [DeliveryController::class, 'index'])->middleware('can:jobs.view');
@@ -150,7 +151,9 @@ Route::prefix('v1/logistics')->name('logistics.')->group(function () {
             Route::get('/dashboard/stats', [LogisticsAdminDashboardController::class, 'stats'])->name('dashboard.stats');
 
             Route::get('/dispatches', [LogisticsAdminDispatchController::class, 'index'])->name('dispatches.index');
+            Route::post('/dispatches', [LogisticsAdminDispatchController::class, 'store'])->name('dispatches.store');
             Route::get('/dispatches/{dispatch}', [LogisticsAdminDispatchController::class, 'show'])->name('dispatches.show');
+            Route::post('/dispatches/{dispatch}/receive', [LogisticsAdminDispatchController::class, 'receive'])->name('dispatches.receive');
             Route::delete('/dispatches/{dispatch}', [LogisticsAdminDispatchController::class, 'destroy'])->name('dispatches.destroy');
 
             Route::get('/users', [LogisticsAdminUserController::class, 'index'])->name('users.index');

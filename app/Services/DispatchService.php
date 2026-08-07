@@ -51,14 +51,9 @@ class DispatchService
                     'receiver_id' => $data['receiver_id'],
                     'from_stop_id' => $data['from_stop_id'],
                     'to_stop_id' => $data['to_stop_id'],
-                    'item_description' => $data['item_description'],
                     'quantity' => $data['quantity'],
-                    'bus_number' => strtoupper((string) $data['bus_number']),
                     'driver_mobile' => $data['driver_mobile'] ?? null,
-                    'receiver_mobile' => $data['receiver_mobile'] ?? null,
                     'bus_reach_time' => $data['bus_reach_time'],
-                    'bus_leave_time' => $data['bus_leave_time'],
-                    'remarks' => $data['remarks'] ?? null,
                     'status' => DispatchStatus::PENDING,
                     'dispatch_date' => $data['dispatch_date'] ?? now()->toDateString(),
                 ]);
@@ -136,19 +131,10 @@ class DispatchService
                     'receiver_id' => $data['receiver_id'] ?? null,
                     'from_stop_id' => $data['from_stop_id'] ?? null,
                     'to_stop_id' => $data['to_stop_id'] ?? null,
-                    'item_description' => $data['item_description'] ?? null,
                     'quantity' => $data['quantity'] ?? null,
-                    'bus_number' => isset($data['bus_number']) ? strtoupper((string) $data['bus_number']) : null,
+                    'driver_mobile' => $data['driver_mobile'] ?? null,
                     'bus_reach_time' => $data['bus_reach_time'] ?? null,
-                    'bus_leave_time' => $data['bus_leave_time'] ?? null,
                 ], static fn ($value) => $value !== null));
-
-                // Nullable fields are set separately so they can be cleared.
-                foreach (['driver_mobile', 'receiver_mobile', 'remarks'] as $nullable) {
-                    if (array_key_exists($nullable, $data)) {
-                        $locked->{$nullable} = $data[$nullable];
-                    }
-                }
 
                 $locked->save();
 

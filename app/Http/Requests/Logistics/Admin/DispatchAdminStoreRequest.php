@@ -1,26 +1,37 @@
 <?php
 
-namespace App\Http\Requests\Logistics;
+namespace App\Http\Requests\Logistics\Admin;
 
 use App\Models\LogisticsUser;
 use App\Models\Stop;
+use App\Models\User;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
-class DispatchStoreRequest extends FormRequest
+/**
+ * An SMS admin creating a dispatch on behalf of a field sender who can't (or
+ * isn't around to) use the mobile app themselves.
+ *
+ * The acting user here is a Service Management System admin (the `web`
+ * guard), not a LogisticsUser, so — unlike the mobile create request —
+ * "sender" is never $this->user(). It's an explicit sender_id the admin
+ * picks, and every business rule that normally reads the sender off the
+ * authenticated user reads it from that field instead.
+ */
+class DispatchAdminStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() instanceof LogisticsUser;
+        $user = $this->user();
+
+        return $user instanceof User && $user->is_active && $user->can('users.manage');
     }
 
     public function rules(): array
     {
         return [
-            // Idempotency key from the mobile offline queue. Generated once
-            // when the dispatch is queued and reused on every retry.
-            'client_uuid' => ['nullable', 'uuid'],
-            'receiver_id' => ['required', 'exists:logistics_users,id'],
+            'sender_id' => ['required', 'exists:logistics_users,id'],
+            'receiver_id' => ['required', 'exists:logistics_users,id', 'different:sender_id'],
             'from_stop_id' => ['required', 'exists:stops,id'],
             'to_stop_id' => ['required', 'exists:stops,id'],
             'quantity' => ['required', 'integer', 'min:1'],
@@ -36,28 +47,31 @@ class DispatchStoreRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'sender_id' => 'sender',
+            'receiver_id' => 'receiver',
             'bus_reach_time' => 'bus in time',
             'from_stop_id' => 'pickup stop',
             'to_stop_id' => 'drop stop',
-            'receiver_id' => 'receiver',
         ];
     }
 
     /**
-     * Business rules 2 to 5. These are relationships between fields, so they
-     * live here rather than in the column rules above.
+     * The same business rules 2 to 5 the mobile create request enforces,
+     * just resolved against the chosen sender_id rather than the caller.
      */
     public function after(): array
     {
         return [
             function (Validator $validator) {
-                /** @var LogisticsUser $sender */
-                $sender = $this->user();
-
+                $sender = LogisticsUser::find($this->input('sender_id'));
                 $receiver = LogisticsUser::find($this->input('receiver_id'));
 
-                if (! $receiver) {
+                if (! $sender || ! $receiver) {
                     return;
+                }
+
+                if (! $sender->is_active) {
+                    $validator->errors()->add('sender_id', 'That user is deactivated and cannot send dispatches.');
                 }
 
                 $this->validateReceiver($validator, $sender, $receiver);
@@ -76,7 +90,7 @@ class DispatchStoreRequest extends FormRequest
 
         // Rule 2: a spoke user may only send to the central hub.
         if ($sender->isSpoke() && ! $receiver->is_central) {
-            $validator->errors()->add('receiver_id', 'You can only send packages to the Ranchi hub.');
+            $validator->errors()->add('receiver_id', 'A spoke user can only send packages to the Ranchi hub.');
         }
 
         // Rule 3: a central user may only send to a non-central active user.
@@ -92,7 +106,7 @@ class DispatchStoreRequest extends FormRequest
 
         // Rule 4: the pickup stop must be in the sender's own location.
         if ($fromStop && $fromStop->location_id !== $sender->location_id) {
-            $validator->errors()->add('from_stop_id', 'That stop does not belong to your location.');
+            $validator->errors()->add('from_stop_id', "That stop does not belong to the sender's location.");
         }
 
         // Rule 5: the drop stop must be in the receiver's location.

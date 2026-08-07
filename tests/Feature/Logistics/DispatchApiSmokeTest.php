@@ -72,9 +72,7 @@ class DispatchApiSmokeTest extends LogisticsTestCase
 
         $create->assertCreated()
             ->assertJsonPath('data.reference_no', 'OD0001')
-            ->assertJsonPath('data.status', 'pending')
-            // bus_number is upper-cased server side.
-            ->assertJsonPath('data.bus_number', 'JH01AB1234');
+            ->assertJsonPath('data.status', 'pending');
 
         $dispatch = Dispatch::firstOrFail();
 

@@ -158,11 +158,8 @@ class DispatchPhotoStorageTest extends LogisticsTestCase
                 'receiver_id' => $dispatch->receiver_id,
                 'from_stop_id' => $dispatch->from_stop_id,
                 'to_stop_id' => $dispatch->to_stop_id,
-                'item_description' => 'Edited during a failing transaction',
                 'quantity' => 2,
-                'bus_number' => 'JH01ZZ0000',
                 'bus_reach_time' => '10:00',
-                'bus_leave_time' => '16:00',
                 'bus_photos' => [$this->photo('new-bus.jpg')],
             ]);
             $this->fail('Expected the simulated exception to propagate.');

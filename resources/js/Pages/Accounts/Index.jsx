@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
+import axios from 'axios';
 import AppLayout from '../../Layouts/AppLayout';
 import { formatCurrency, formatDate, formatDateTime, STAGES, OUTCOMES } from '../../utils/formatters';
 import { exportToCSV, exportToPDF } from '../../utils/exportHelper';
 import { openWhatsApp } from '../../utils/WhatsAppHelper';
+import { notifySuccess, notifyError } from '../../utils/toast';
 import TableLoadingOverlay from '../../Components/Common/TableLoadingOverlay';
 import SearchableCustomerSelect from '../../Components/Common/SearchableCustomerSelect';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,6 +27,51 @@ export default function AccountsIndex({
   const [unpaidOnly, setUnpaidOnly] = useState(Boolean(filters?.unpaid_only));
   const [isDuesModalOpen, setIsDuesModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [collectJob, setCollectJob] = useState(null);
+  const [collectForm, setCollectForm] = useState({ amount: '', payment_mode: 'cash', remarks: '' });
+  const [collectSubmitting, setCollectSubmitting] = useState(false);
+  const [collectErrors, setCollectErrors] = useState({});
+
+  const openCollectModal = (job) => {
+    setCollectJob(job);
+    setCollectForm({ amount: String(job.due_amount ?? job.payable_amount ?? ''), payment_mode: 'cash', remarks: '' });
+    setCollectErrors({});
+  };
+
+  const submitCollectPayment = async () => {
+    if (!collectJob) return;
+
+    const amount = parseFloat(collectForm.amount);
+    const due = Number(collectJob.due_amount ?? collectJob.payable_amount ?? 0);
+    if (!collectForm.amount || isNaN(amount) || amount <= 0) {
+      setCollectErrors({ amount: 'Enter an amount greater than ₹0.' });
+      return;
+    }
+    if (amount > due + 0.01) {
+      setCollectErrors({ amount: `Cannot exceed the ₹${due.toFixed(2)} due.` });
+      return;
+    }
+
+    setCollectSubmitting(true);
+    try {
+      const headers = sanctumToken ? { Authorization: `Bearer ${sanctumToken}` } : {};
+      const res = await axios.post(
+        `/api/v1/jobs/${collectJob.id}/collect-due-payment`,
+        { amount, payment_mode: collectForm.payment_mode, remarks: collectForm.remarks || undefined },
+        { headers }
+      );
+      notifySuccess(res.data?.message || 'Payment collected.');
+      setCollectJob(null);
+      router.reload({ preserveScroll: true });
+    } catch (err) {
+      if (err.response?.status === 422 && err.response?.data?.errors) {
+        setCollectErrors(Object.fromEntries(Object.entries(err.response.data.errors).map(([k, v]) => [k, v[0]])));
+      }
+      notifyError(err.response?.data?.message || 'Could not collect payment.');
+    } finally {
+      setCollectSubmitting(false);
+    }
+  };
 
   React.useEffect(() => {
     const unbindStart = router.on('start', () => setIsNavigating(true));
@@ -111,7 +158,7 @@ export default function AccountsIndex({
 
   // WhatsApp Reminder Sender
   const sendDuesWhatsAppReminder = (cItem) => {
-    const jobListStr = cItem.jobs.map(j => `• ${j.product_name} (#${j.token_no}): ₹${j.payable_amount}`).join('\n');
+    const jobListStr = cItem.jobs.map(j => `• ${j.product_name} (#${j.token_no}): ₹${j.due_amount ?? j.payable_amount}`).join('\n');
     const msg = `Dear ${cItem.name},\n\nThis is a friendly reminder from Seekoji Electric regarding your pending repair payment balance of *₹${cItem.total_due.toLocaleString('en-IN')}*.\n\nWork Orders with Outstanding Dues:\n${jobListStr}\n\nKindly clear the dues at your earliest convenience. Thank you!`;
     openWhatsApp({ mobile: cItem.mobile, message: msg });
   };
@@ -383,7 +430,7 @@ export default function AccountsIndex({
                 {jobsData.length > 0 ? (
                   jobsData.map((job) => {
                     const stageConfig = STAGES[job.stage] || STAGES.new;
-                    const isPaid = Boolean(job.is_paid);
+                    const paymentStatus = job.payment_status; // 'paid' | 'partial' | 'unpaid' | null
 
                     return (
                       <tr key={job.id} className="hover:bg-[#f9f9f7] transition-colors">
@@ -416,16 +463,26 @@ export default function AccountsIndex({
                         </td>
 
                         {/* Payable Amount */}
-                        <td className="py-3 px-4 text-right font-black text-sm font-mono text-[#0B0B0B]">
-                          {formatCurrency(job.payable_amount || 0)}
+                        <td className="py-3 px-4 text-right font-mono text-sm text-[#0B0B0B]">
+                          <div className="font-black">{formatCurrency(job.payable_amount || 0)}</div>
+                          {paymentStatus === 'partial' && (
+                            <div className="text-[10px] font-semibold text-amber-700">
+                              {formatCurrency(job.paid_amount || 0)} paid · {formatCurrency(job.due_amount || 0)} due
+                            </div>
+                          )}
                         </td>
 
                         {/* Payment Status */}
                         <td className="py-3 px-4 text-center">
-                          {isPaid ? (
+                          {paymentStatus === 'paid' ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                               <span className="material-symbols-outlined text-xs text-emerald-600">sentiment_very_satisfied</span>
                               PAID
+                            </span>
+                          ) : paymentStatus === 'partial' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                              <span className="material-symbols-outlined text-xs text-amber-600">pie_chart</span>
+                              PARTIAL
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
@@ -605,8 +662,18 @@ export default function AccountsIndex({
                                   </span>
 
                                   <span className="font-black text-sm text-[#d97706] font-mono">
-                                    {formatCurrency(job.payable_amount)}
+                                    {formatCurrency(job.due_amount ?? job.payable_amount)}
                                   </span>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => openCollectModal(job)}
+                                    title="Collect Payment"
+                                    className="rounded-full bg-[#c2410c] hover:bg-[#9a3412] text-white px-3 h-7 text-[10px] font-bold flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                                  >
+                                    <span className="material-symbols-outlined text-xs">account_balance_wallet</span>
+                                    Collect
+                                  </button>
 
                                   <Link
                                     href={`/jcc?stage=${job.stage || 'completed'}&customer_id=${cItem.id || job.customer_id || ''}&search=${job.token_no}`}
@@ -646,6 +713,93 @@ export default function AccountsIndex({
           </div>
         )}
       </AnimatePresence>
+
+      {/* COLLECT DUE PAYMENT MODAL — a second, quicker path to the same
+          /collect-due-payment endpoint used in JCC, reachable straight from
+          the dues breakdown without navigating to the job first */}
+      {collectJob && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#E5E5E5] bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] px-5 py-3.5">
+              <h3 className="text-sm font-bold text-[#0B0B0B]">Collect Due Payment</h3>
+              <button
+                onClick={() => setCollectJob(null)}
+                className="rounded-md p-1 text-[#666666] hover:bg-[#f4f4f2] cursor-pointer"
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-3 p-5">
+              <p className="text-xs text-[#666666]">
+                #{collectJob.token_no} · {collectJob.product_name} ·{' '}
+                <span className="font-bold text-[#9a3412]">
+                  {formatCurrency(collectJob.due_amount ?? collectJob.payable_amount ?? 0)} due
+                </span>
+              </p>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold text-[#0B0B0B]">Amount (₹) *</label>
+                <input
+                  type="number"
+                  max={collectJob.due_amount ?? collectJob.payable_amount ?? undefined}
+                  value={collectForm.amount}
+                  onChange={(e) => {
+                    setCollectForm((f) => ({ ...f, amount: e.target.value }));
+                    if (collectErrors.amount) setCollectErrors((er) => ({ ...er, amount: null }));
+                  }}
+                  className={`w-full rounded-lg border px-3 py-2 text-xs font-mono outline-none ${
+                    collectErrors.amount ? 'border-rose-500 bg-rose-50' : 'border-[#E5E5E5]'
+                  }`}
+                />
+                {collectErrors.amount && <p className="mt-1 text-[11px] font-semibold text-rose-600">{collectErrors.amount}</p>}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold text-[#0B0B0B]">Payment Mode</label>
+                <select
+                  value={collectForm.payment_mode}
+                  onChange={(e) => setCollectForm((f) => ({ ...f, payment_mode: e.target.value }))}
+                  className="w-full rounded-lg border border-[#E5E5E5] px-3 py-2 text-xs outline-none"
+                >
+                  <option value="cash">Cash Counter</option>
+                  <option value="upi">UPI / QR Code</option>
+                  <option value="bank">Bank Transfer</option>
+                  <option value="waived">Waived Off</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold text-[#0B0B0B]">Remarks (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Transaction Ref / Note"
+                  value={collectForm.remarks}
+                  onChange={(e) => setCollectForm((f) => ({ ...f, remarks: e.target.value }))}
+                  className="w-full rounded-lg border border-[#E5E5E5] px-3 py-2 text-xs outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-[#E5E5E5] bg-[#F9F9F7] px-5 py-3">
+              <button
+                onClick={() => setCollectJob(null)}
+                className="rounded-md border border-[#E5E5E5] px-3 py-1.5 text-xs text-[#666666] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitCollectPayment}
+                disabled={collectSubmitting}
+                className="rounded-md bg-[#c2410c] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-60 cursor-pointer"
+              >
+                {collectSubmitting ? 'Collecting…' : 'Collect Payment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </AppLayout>
   );

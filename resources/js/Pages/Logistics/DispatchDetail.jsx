@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { Link } from '@inertiajs/react';
+import React, { useMemo, useState } from 'react';
+import { Link, router } from '@inertiajs/react';
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppLayout from '../../Layouts/AppLayout';
 import LogisticsTabs from '../../Components/Logistics/LogisticsTabs';
 import StatusPill from '../../Components/Logistics/StatusPill';
+import { notifySuccess, notifyError } from '../../utils/toast';
 import { formatDate, formatDateTime } from '../../utils/formatters';
-import { formatTime } from '../../utils/logistics';
+import { formatTime, LOGISTICS_API } from '../../utils/logistics';
 
 function Field({ label, value, mono = false }) {
   return (
@@ -43,7 +45,180 @@ function PhotoGroup({ title, photos, onOpen }) {
   );
 }
 
-export default function DispatchDetail({ dispatch }) {
+/**
+ * Lets an admin confirm receipt on behalf of whichever logistics user
+ * physically has the package — mirrors the mobile confirm flow, since the
+ * admin's own account isn't a LogisticsUser and can't act as one directly.
+ */
+function ReceiveActionCard({ dispatch, logisticsUsers }) {
+  const [actingUserId, setActingUserId] = useState('');
+  const [action, setAction] = useState('received');
+  const [note, setNote] = useState('');
+  const [receiptPhoto, setReceiptPhoto] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const receiptPreview = useMemo(
+    () => (receiptPhoto ? URL.createObjectURL(receiptPhoto) : null),
+    [receiptPhoto]
+  );
+
+  // Rule 6: the sender never confirms. Anyone else active at the receiver's
+  // own location may — the first to confirm wins, and who did is logged.
+  const eligibleUsers = (logisticsUsers || []).filter(
+    (u) => u.location_id === dispatch.receiver?.location_id && u.id !== dispatch.sender?.id
+  );
+
+  const submit = async () => {
+    const newErrors = {};
+    if (!actingUserId) newErrors.acting_user_id = 'Choose who is confirming this.';
+    if (action === 'not_received' && note.trim().length < 5) {
+      newErrors.note = 'Give a reason of at least 5 characters.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setSubmitting(true);
+
+    const payload = new FormData();
+    payload.append('acting_user_id', actingUserId);
+    payload.append('action', action);
+    if (note.trim()) payload.append('note', note.trim());
+    if (receiptPhoto) payload.append('receipt_photo', receiptPhoto);
+
+    try {
+      const res = await axios.post(`${LOGISTICS_API}/dispatches/${dispatch.id}/receive`, payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      notifySuccess(res.data?.message || 'Dispatch updated.');
+      router.reload({ only: ['dispatch'] });
+    } catch (err) {
+      if (err.response?.status === 422 && err.response?.data?.errors) {
+        setErrors(Object.fromEntries(Object.entries(err.response.data.errors).map(([k, v]) => [k, v[0]])));
+      }
+      notifyError(err.response?.data?.message || 'Could not update the dispatch.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border-2 border-[#005EA4] bg-white p-4">
+      <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-[#005EA4]">
+        <span className="material-symbols-outlined text-base">bolt</span>
+        Confirm On Behalf Of
+      </h3>
+
+      <div>
+        <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-[#666666]">
+          Confirming User *
+        </label>
+        <select
+          value={actingUserId}
+          onChange={(e) => {
+            setActingUserId(e.target.value);
+            setErrors((er) => ({ ...er, acting_user_id: null }));
+          }}
+          className={`w-full rounded-md border bg-white px-2.5 py-1.5 text-xs outline-none focus:border-[#005EA4] ${
+            errors.acting_user_id ? 'border-[#D03B3B]' : 'border-[#E5E5E5]'
+          }`}
+        >
+          <option value="">Select who has the package</option>
+          {eligibleUsers.map((u) => (
+            <option key={u.id} value={u.id}>{u.name} · {u.location_name}</option>
+          ))}
+        </select>
+        {errors.acting_user_id && <p className="mt-1 text-[11px] font-semibold text-[#D03B3B]">{errors.acting_user_id}</p>}
+        {eligibleUsers.length === 0 && (
+          <p className="mt-1 text-[11px] text-[#999999]">No active user at the receiving location.</p>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setAction('received')}
+          className={`flex-1 rounded-md border px-3 py-1.5 text-xs font-semibold cursor-pointer ${
+            action === 'received' ? 'border-[#0D7C59] bg-[#E6F7F0] text-[#0D7C59]' : 'border-[#E5E5E5] text-[#666666]'
+          }`}
+        >
+          Received
+        </button>
+        <button
+          type="button"
+          onClick={() => setAction('not_received')}
+          className={`flex-1 rounded-md border px-3 py-1.5 text-xs font-semibold cursor-pointer ${
+            action === 'not_received' ? 'border-[#D03B3B] bg-[#FFE6E6] text-[#D03B3B]' : 'border-[#E5E5E5] text-[#666666]'
+          }`}
+        >
+          Not Received
+        </button>
+      </div>
+
+      {action === 'not_received' && (
+        <div>
+          <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-[#666666]">Reason *</label>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => {
+              setNote(e.target.value);
+              setErrors((er) => ({ ...er, note: null }));
+            }}
+            placeholder="Why wasn't it received?"
+            className={`w-full rounded-md border bg-white px-2.5 py-1.5 text-xs outline-none focus:border-[#005EA4] ${
+              errors.note ? 'border-[#D03B3B]' : 'border-[#E5E5E5]'
+            }`}
+          />
+          {errors.note && <p className="mt-1 text-[11px] font-semibold text-[#D03B3B]">{errors.note}</p>}
+        </div>
+      )}
+
+      <div>
+        <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-[#666666]">
+          Receipt Photo (optional)
+        </label>
+        {receiptPreview ? (
+          <div className="relative h-20 w-20">
+            <img src={receiptPreview} alt="" className="h-full w-full rounded-lg border border-[#E5E5E5] object-cover" />
+            <button
+              type="button"
+              onClick={() => setReceiptPhoto(null)}
+              className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white cursor-pointer"
+              aria-label="Remove photo"
+            >
+              <span className="material-symbols-outlined text-xs">close</span>
+            </button>
+          </div>
+        ) : (
+          <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[#C9C9C9] text-[#999999] hover:border-[#005EA4] hover:text-[#005EA4]">
+            <span className="material-symbols-outlined text-lg">add_a_photo</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => setReceiptPhoto(e.target.files?.[0] || null)}
+            />
+          </label>
+        )}
+      </div>
+
+      <button
+        type="button"
+        disabled={submitting || eligibleUsers.length === 0}
+        onClick={submit}
+        className="w-full rounded-md bg-[#005EA4] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60 cursor-pointer"
+      >
+        {submitting ? 'Submitting…' : action === 'received' ? 'Confirm Received' : 'Confirm Not Received'}
+      </button>
+    </div>
+  );
+}
+
+export default function DispatchDetail({ dispatch, logisticsUsers = [] }) {
   const [lightbox, setLightbox] = useState(null);
   const photos = dispatch.photos || { bus: [], package: [], receipt: [] };
   const events = dispatch.events || [];
@@ -90,33 +265,17 @@ export default function DispatchDetail({ dispatch }) {
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
                 <Field label="Sender" value={`${dispatch.sender?.name || '-'} (${dispatch.sender?.location_name || '-'})`} />
                 <Field label="Receiver" value={`${dispatch.receiver?.name || '-'} (${dispatch.receiver?.location_name || '-'})`} />
-                <Field label="Bus Number" value={dispatch.bus_number} mono />
                 <Field label="From Stop" value={dispatch.from_stop?.name} />
                 <Field label="To Stop" value={dispatch.to_stop?.name} />
                 <Field label="Quantity" value={dispatch.quantity} />
-                {/* Both times describe the bus at the pickup stand. */}
+                {/* Describes the bus at the pickup stand. */}
                 <Field
                   label="Bus In Time"
                   value={`${formatTime(dispatch.bus_reach_time)}${
                     dispatch.from_stop?.name ? ` at ${dispatch.from_stop.name}` : ''
                   }`}
                 />
-                <Field
-                  label="Bus Out Time"
-                  value={`${formatTime(dispatch.bus_leave_time)}${
-                    dispatch.from_stop?.name ? ` from ${dispatch.from_stop.name}` : ''
-                  }`}
-                />
                 <Field label="Driver Mobile" value={dispatch.driver_mobile} mono />
-                <Field label="Receiver Mobile" value={dispatch.receiver_mobile} mono />
-                <div className="col-span-2 sm:col-span-3">
-                  <Field label="Item Description" value={dispatch.item_description} />
-                </div>
-                {dispatch.remarks && (
-                  <div className="col-span-2 sm:col-span-3">
-                    <Field label="Remarks" value={dispatch.remarks} />
-                  </div>
-                )}
               </dl>
             </div>
 
@@ -128,32 +287,40 @@ export default function DispatchDetail({ dispatch }) {
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#E5E5E5] bg-white p-4">
-            <h3 className="mb-3 text-[13px] font-semibold text-[#0B0B0B]">Event timeline</h3>
+          <div className="space-y-3">
+            {dispatch.status === 'pending' && (
+              <ReceiveActionCard dispatch={dispatch} logisticsUsers={logisticsUsers} />
+            )}
 
-            <ol className="relative space-y-4 border-l border-[#E5E5E5] pl-4">
-              {events.map((e, index) => {
-                const isLast = index === events.length - 1;
+            <div className="rounded-xl border border-[#E5E5E5] bg-white p-4">
+              <h3 className="mb-3 text-[13px] font-semibold text-[#0B0B0B]">Event timeline</h3>
 
-                return (
-                  <li key={e.id} className="relative">
-                    <span
-                      className={`absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white ${
-                        isLast ? 'bg-[#005EA4]' : 'bg-[#C9C9C9]'
-                      }`}
-                    />
-                    <p className={`text-xs ${isLast ? 'font-semibold text-[#0B0B0B]' : 'text-[#0B0B0B]'}`}>{e.note}</p>
-                    <p className="mt-0.5 text-[10px] text-[#666666]">
-                      {e.user?.name || 'System'} · {formatDateTime(e.created_at)}
-                    </p>
-                  </li>
-                );
-              })}
-            </ol>
+              <ol className="relative space-y-4 border-l border-[#E5E5E5] pl-4">
+                {events.map((e, index) => {
+                  const isLast = index === events.length - 1;
 
-            <p className="mt-4 border-t border-[#E5E5E5] pt-3 text-[10px] text-[#999999]">
-              Read-only. Admins observe dispatches; only the receiving side can change a status.
-            </p>
+                  return (
+                    <li key={e.id} className="relative">
+                      <span
+                        className={`absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                          isLast ? 'bg-[#005EA4]' : 'bg-[#C9C9C9]'
+                        }`}
+                      />
+                      <p className={`text-xs ${isLast ? 'font-semibold text-[#0B0B0B]' : 'text-[#0B0B0B]'}`}>{e.note}</p>
+                      <p className="mt-0.5 text-[10px] text-[#666666]">
+                        {e.user?.name || 'System'} · {formatDateTime(e.created_at)}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ol>
+
+              <p className="mt-4 border-t border-[#E5E5E5] pt-3 text-[10px] text-[#999999]">
+                {dispatch.status === 'pending'
+                  ? 'Confirming here logs the admin action and the logistics user it was done on behalf of.'
+                  : 'This dispatch has already been confirmed and can no longer change status.'}
+              </p>
+            </div>
           </div>
         </div>
       </div>

@@ -66,7 +66,24 @@ class JobTransitionRequest extends FormRequest
             'estimated_budget' => ['required_if:action,fault_found', 'nullable', 'numeric', 'min:0', 'max:9999999'],
             'approved_amount' => ['required_if:action,approve', 'nullable', 'numeric', 'min:0'],
             'final_amount' => ['required_if:action,work_done', 'nullable', 'numeric', 'min:0'],
-            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'paid_amount' => [
+                'nullable',
+                'numeric',
+                'min:0.01',
+                function ($attribute, $value, $fail) {
+                    if ($this->input('action') !== 'collect_payment') {
+                        return;
+                    }
+
+                    /** @var \App\Models\Job|null $job */
+                    $job = $this->route('job');
+                    $due = $job?->dueAmount();
+
+                    if ($due !== null && (float) $value > $due + 0.01) {
+                        $fail('Collected amount cannot exceed the ₹' . number_format($due, 2) . ' still due.');
+                    }
+                },
+            ],
             'payment_mode' => ['required_if:action,collect_payment', 'nullable', 'in:cash,upi,bank,waived'],
             'pend_reason' => ['required_if:action,mark_pending', 'nullable', 'string', 'max:255'],
             'delivery_mode' => ['required_if:action,deliver', 'nullable', 'in:bus,courier,self'],

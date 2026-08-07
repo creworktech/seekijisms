@@ -124,10 +124,8 @@ class WebController extends Controller
         $todayReceived = (clone $baseQuery)->whereDate('created_at', $today)->count();
         $todaysTask    = (clone $baseQuery)->where('stage', 'repair')->count();
 
-        $totalRevenue = (float) (clone $baseQuery)->where('is_paid', true)->sum('payable_amount');
-        $duesAmount   = (float) (clone $baseQuery)->where('is_paid', false)
-            ->whereNotNull('payable_amount')
-            ->sum('payable_amount');
+        $totalRevenue = (float) (clone $baseQuery)->sum('paid_amount');
+        $duesAmount   = Job::sumOutstandingDue(clone $baseQuery);
         $cancelledJobs = (clone $baseQuery)->where('outcome', 'cancelled')->count();
 
         $rawStages = (clone $baseQuery)
@@ -541,8 +539,8 @@ class WebController extends Controller
         $analytics = [
             'total_jobs' => $totalJobs,
             'total_payable' => (float) (clone $analyticsQuery)->sum('payable_amount'),
-            'total_paid' => (float) (clone $analyticsQuery)->where('is_paid', true)->sum('payable_amount'),
-            'total_unpaid' => (float) (clone $analyticsQuery)->where('is_paid', false)->where('payable_amount', '>', 0)->sum('payable_amount'),
+            'total_paid' => (float) (clone $analyticsQuery)->sum('paid_amount'),
+            'total_unpaid' => Job::sumOutstandingDue(clone $analyticsQuery),
             'completed_count' => $completedJobs,
             'completion_rate' => $totalJobs > 0 ? round(($completedJobs / $totalJobs) * 100, 1) : 0,
             'outcomes' => [
@@ -606,22 +604,19 @@ class WebController extends Controller
                   ->where('payable_amount', '>', 0);
         }
 
-        // 1. Total Revenue (All time paid)
-        $totalRevenue = (float) (clone $query)
-            ->where('is_paid', true)
-            ->sum('payable_amount');
+        // 1. Total Revenue (All time actually collected, partial payments included)
+        $totalRevenue = (float) (clone $query)->sum('paid_amount');
 
-        // 2. Dues Amount (Unpaid balances)
-        $totalDues = (float) (clone $query)
-            ->where('is_paid', false)
-            ->whereNotNull('payable_amount')
-            ->sum('payable_amount');
+        // 2. Dues Amount (the balance still outstanding, not the full bill
+        // on anything that's been partially paid)
+        $totalDues = Job::sumOutstandingDue(clone $query);
 
-        // 3. Period Revenue (Filtered range revenue)
+        // 3. Period Revenue (payments collected in the filtered range — keyed
+        // off updated_at as a best-effort proxy, same as before)
         $periodRevenue = (float) (clone $query)
-            ->where('is_paid', true)
+            ->where('paid_amount', '>', 0)
             ->whereBetween('updated_at', [$fromDate, $toDate])
-            ->sum('payable_amount');
+            ->sum('paid_amount');
 
         // Counts
         $paidJobsCount   = (clone $query)->where('is_paid', true)->count();
@@ -652,7 +647,7 @@ class WebController extends Controller
                     'name' => $c->name,
                     'customer_code' => $c->customer_code,
                     'mobile' => $c->mobile,
-                    'total_due' => (float) $c->jobs->sum('payable_amount'),
+                    'total_due' => (float) $c->jobs->sum(fn ($j) => $j->dueAmount() ?? 0),
                     'due_jobs_count' => $c->jobs->count(),
                     'jobs' => $c->jobs->map(function ($j) {
                         return [
@@ -664,6 +659,8 @@ class WebController extends Controller
                             'serial_no' => $j->serial_no,
                             'stage' => $j->stage,
                             'payable_amount' => (float) $j->payable_amount,
+                            'paid_amount' => (float) $j->paid_amount,
+                            'due_amount' => $j->dueAmount(),
                             'in_date' => $j->in_date,
                             'created_at' => $j->created_at ? $j->created_at->format('Y-m-d H:i:s') : null,
                         ];
@@ -718,6 +715,15 @@ class WebController extends Controller
         if ($request->filled('payment_mode')) {
             $job->payment_mode = $request->input('payment_mode');
         }
+
+        // A manual admin correction, not a real collection event — it
+        // doesn't go through the payments ledger. Marking paid still has to
+        // keep paid_amount consistent with is_paid, though, or due_amount
+        // and the dues reports would silently disagree with this flag.
+        if ($job->is_paid && $job->payable_amount !== null) {
+            $job->paid_amount = $job->payable_amount;
+        }
+
         if ($job->is_paid && ! $job->paid_at) {
             $job->paid_at = now();
         }

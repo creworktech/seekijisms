@@ -53,6 +53,8 @@ class LogisticsController extends Controller
             'dispatches' => DispatchResource::collection($dispatches)->response()->getData(true),
             'locations' => LocationResource::collection(Location::orderBy('name')->get())->resolve(),
             'filters' => $request->only(['search', 'status', 'from', 'to', 'location_id']),
+            'logisticsUsers' => $this->logisticsUsersForPicker(),
+            'stopsByLocation' => $this->stopsByLocation(),
         ]);
     }
 
@@ -65,7 +67,37 @@ class LogisticsController extends Controller
 
         return Inertia::render('Logistics/DispatchDetail', [
             'dispatch' => (new DispatchResource($dispatch))->resolve(),
+            'logisticsUsers' => $this->logisticsUsersForPicker(),
         ]);
+    }
+
+    /**
+     * Every active logistics user, for the admin's sender/receiver/confirming
+     * pickers when creating or confirming a dispatch on someone's behalf.
+     */
+    private function logisticsUsersForPicker()
+    {
+        return LogisticsUserResource::collection(
+            LogisticsUser::query()
+                ->active()
+                ->with('location')
+                ->whereHas('location', fn ($q) => $q->where('is_active', true))
+                ->orderBy('name')
+                ->get()
+        )->resolve();
+    }
+
+    /**
+     * Active stops grouped by location id, so the create-dispatch modal can
+     * repopulate the stop dropdown without a round trip when the sender or
+     * receiver changes.
+     */
+    private function stopsByLocation()
+    {
+        return Location::with('stops')->get()
+            ->mapWithKeys(fn (Location $l) => [
+                $l->id => StopResource::collection($l->stops->where('is_active', true)->values())->resolve(),
+            ]);
     }
 
     public function users(Request $request): Response
@@ -195,8 +227,6 @@ class LogisticsController extends Controller
 
                 $q->where(function ($sub) use ($term) {
                     $sub->where('reference_no', 'like', $term)
-                        ->orWhere('bus_number', 'like', $term)
-                        ->orWhere('item_description', 'like', $term)
                         ->orWhereHas('sender', fn ($s) => $s->where('name', 'like', $term))
                         ->orWhereHas('receiver', fn ($s) => $s->where('name', 'like', $term));
                 });

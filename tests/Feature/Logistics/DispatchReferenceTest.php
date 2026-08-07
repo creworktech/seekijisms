@@ -25,11 +25,8 @@ class DispatchReferenceTest extends LogisticsTestCase
             'receiver_id' => $this->hubUser->id,
             'from_stop_id' => $this->gumlaStand->id,
             'to_stop_id' => $this->khadgarha->id,
-            'item_description' => 'Bulk load test item',
             'quantity' => 1,
-            'bus_number' => 'JH01AA1111',
             'bus_reach_time' => '10:00',
-            'bus_leave_time' => '16:00',
         ];
 
         for ($i = 0; $i < 50; $i++) {
@@ -72,11 +69,8 @@ class DispatchReferenceTest extends LogisticsTestCase
             'receiver_id' => $this->hubUser->id,
             'from_stop_id' => $this->gumlaStand->id,
             'to_stop_id' => $this->khadgarha->id,
-            'item_description' => 'First real dispatch',
             'quantity' => 1,
-            'bus_number' => 'JH01AA1111',
             'bus_reach_time' => '10:00',
-            'bus_leave_time' => '16:00',
         ];
 
         $first = $service->create($payload, $this->gumlaUser);
@@ -119,11 +113,8 @@ class DispatchReferenceTest extends LogisticsTestCase
             'receiver_id' => $this->hubUser->id,
             'from_stop_id' => $this->gumlaStand->id,
             'to_stop_id' => $this->khadgarha->id,
-            'item_description' => 'Past the padding boundary',
             'quantity' => 1,
-            'bus_number' => 'JH01AA1111',
             'bus_reach_time' => '10:00',
-            'bus_leave_time' => '16:00',
         ], $this->gumlaUser);
 
         $this->assertSame('OD1235', $dispatch->reference_no);
