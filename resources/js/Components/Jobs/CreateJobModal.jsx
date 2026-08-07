@@ -57,8 +57,25 @@ export default function CreateJobModal({ isOpen, onClose, onSuccess, tokenPrevie
     }
   };
 
+  // The modal never unmounts when closed (it just renders null), so its
+  // state would otherwise survive across opens — a submitted or cancelled
+  // form would still be sitting there filled in the next time it's opened.
+  const resetForm = () => {
+    setSelectedCustomerObj(null);
+    setCustomerSearch('');
+    setCustomerOptions([]);
+    setIsSearchFocused(false);
+    setReceivedFrom('self');
+    setInDate(new Date().toISOString().split('T')[0]);
+    setGlobalPriority('medium');
+    setProductsList([createDefaultProduct(1)]);
+    setErrors({});
+    setShowConfirm(false);
+  };
+
   useEffect(() => {
     if (isOpen) {
+      resetForm();
       fetchTokenPreview();
     }
   }, [isOpen]);
