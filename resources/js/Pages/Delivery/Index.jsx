@@ -254,7 +254,7 @@ export default function Delivery({ jobs, filters, sanctumToken }) {
                                       onChange={(e) => setDeliveryMode(e.target.value)}
                                       className="w-full px-3 py-2 bg-white border border-[#E5E5E5] rounded-lg text-xs outline-none focus:border-[#005ea4]"
                                     >
-                                      <option value="self">Select how it goes back</option>
+                                      <option value="" disabled>Select how it goes back</option>
                                       <option value="self">Handed Over directly (Self)</option>
                                       <option value="bus">Sent by Bus Transport</option>
                                       <option value="courier">Sent by Courier</option>

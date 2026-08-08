@@ -69,7 +69,7 @@ class JobTransitionRequest extends FormRequest
             'paid_amount' => [
                 'nullable',
                 'numeric',
-                'min:0.01',
+                'min:0',
                 function ($attribute, $value, $fail) {
                     if ($this->input('action') !== 'collect_payment') {
                         return;
@@ -78,6 +78,13 @@ class JobTransitionRequest extends FormRequest
                     /** @var \App\Models\Job|null $job */
                     $job = $this->route('job');
                     $due = $job?->dueAmount();
+
+                    // A ₹0 bill has nothing to collect, so 0 is the only valid
+                    // amount there. Any real bill still requires collecting
+                    // something — use "Release Unpaid" to skip payment entirely.
+                    if ($due !== null && $due > 0 && (float) $value <= 0) {
+                        $fail('The paid amount field must be at least 0.01.');
+                    }
 
                     if ($due !== null && (float) $value > $due + 0.01) {
                         $fail('Collected amount cannot exceed the ₹' . number_format($due, 2) . ' still due.');

@@ -230,6 +230,26 @@ class JobPartialPaymentTest extends TestCase
         $this->assertSame(0.0, $job->fresh()->dueAmount());
     }
 
+    /**
+     * A ₹0 bill (e.g. no fault found, inspection fee waived) has nothing to
+     * collect. The Collected Amount field defaults to 0 in that case, and
+     * the request must not be rejected for being "too low" — 0 is correct.
+     */
+    public function test_collecting_payment_on_a_zero_amount_bill_accepts_zero(): void
+    {
+        $job = $this->completedJob(0);
+
+        $response = $this->actingAs($this->admin)->postJson("/api/v1/jobs/{$job->id}/transition", [
+            'action' => 'collect_payment',
+            'payment_mode' => 'cash',
+            'paid_amount' => 0,
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertTrue($response->json('data.is_paid'));
+        $this->assertEquals(0, $response->json('data.paid_amount'));
+    }
+
     public function test_a_job_with_no_due_amount_refuses_a_due_payment(): void
     {
         $job = $this->completedJob(3000);
